@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+
+/* ── Themes ──
+   Colors are exposed as CSS custom properties so they swap at runtime
+   when [data-theme] flips on <html>. JS imports from constants/theme.js
+   point at these vars, so most components don't need to know which
+   theme is active. */
+:root,
+:root[data-theme="dark"] {
+  --accent:     #E8B14A;
+  --bg:         #0A0A0B;
+  --card:       #141416;
+  --card-elev:  #1A1A1D;
+  --border:     #1F1F23;
+  --border-br:  #2A2A2F;
+  --text:       #FFFFFF;
+  --text-mid:   #A1A1AA;
+  --text-dim:   #6B6B73;
+  --hover-bg:   #1F1F23;
+  --hover-br:   #3A3A3F;
+  --hover-fg:   #FFFFFF;
+}
+:root[data-theme="light"] {
+  --accent:     #B8862E;
+  --bg:         #FAFAF7;
+  --card:       #FFFFFF;
+  --card-elev:  #F2EFE8;
+  --border:     #E7E2D6;
+  --border-br:  #D4CFC4;
+  --text:       #1A1A1B;
+  --text-mid:   #5C5C66;
+  --text-dim:   #8B8B95;
+  --hover-bg:   #EFECE3;
+  --hover-br:   #C9C3B5;
+  --hover-fg:   #1A1A1B;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); transition: background 0.25s ease, color 0.25s ease; }
+button { font-family: inherit; }
+::-webkit-scrollbar { display: none; }
+
+.friend-tap { transition: transform 0.12s ease, opacity 0.12s ease; }
+.friend-tap:active  { transform: scale(0.96); opacity: 0.8; }
+.friend-tap:hover   { opacity: 0.92; }
+
+.task-actions-btn:hover  { background: var(--hover-bg) !important; color: var(--hover-fg) !important; border-color: var(--hover-br) !important; }
+.task-actions-btn:active { transform: scale(0.92); }
+
+/* Universal tactile press state. Add `tappable` to any interactive element
+   to give it a brief scale-down on press — answers "did my tap register?" */
+.tappable { transition: transform 80ms ease-out; }
+.tappable:active { transform: scale(0.97); }
+
+/* ── Layout animations ── */
+@keyframes fadeUp    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn    { from { opacity: 0; }                             to { opacity: 1; } }
+@keyframes scaleIn   { from { opacity: 0; transform: scale(0.7); }      to { opacity: 1; transform: scale(1); } }
+@keyframes screenIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+@keyframes heroIn {
+  0%   { opacity: 0; transform: scale(0.94) translateY(8px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes avatarHero {
+  0%   { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Ring pulse (level ring at 80%+ progress) ── */
+@keyframes ringPulse {
+  0%,100% { filter: drop-shadow(0 0 8px var(--accent, #E8B14A)); opacity: 0.8; }
+  50%     { filter: drop-shadow(0 0 22px var(--accent, #E8B14A)); opacity: 1; }
+}
+
+/* ── XP / float ── */
+@keyframes float {
+  0%,100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  50%      { transform: translateY(-20px) scale(1.3); opacity: 0.8; }
+}
+@keyframes xpFloat {
+  0%   { opacity: 0; transform: translateY(0); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-60px); }
+}
+
+/* ── Toast / undo ── */
+@keyframes toastIn {
+  0%      { opacity: 0; transform: translateY(20px) translateX(-50%); }
+  12%,88% { opacity: 1; transform: translateY(0) translateX(-50%); }
+  100%    { opacity: 0; transform: translateY(-10px) translateX(-50%); }
+}
+
+/* ── Notification ── */
+@keyframes notifBadge    { 0% { transform: scale(0); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes notifSlideIn  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ── Radar (LifeStats) ── */
+@keyframes radarBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.015); }
+}
+@keyframes apexPulse {
+  0%   { r: 4;  opacity: 0.9; }
+  100% { r: 18; opacity: 0;   }
+}
+
+/* ── Cheer burst (FriendDetail) ── */
+@keyframes sparkleCenter {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  25%  { opacity: 1; transform: translate(-50%, -20px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -90px) scale(0.7) rotate(15deg); }
+}
+@keyframes sparkleLeft {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.3); }
+  25%  { opacity: 1; transform: translate(-130%, -25px) scale(1); }
+  100% { opacity: 0; transform: translate(-180%, -75px) scale(0.5) rotate(-25deg); }
+}
+@keyframes sparkleRight {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.3); }
+  25%  { opacity: 1; transform: translate(30%, -25px) scale(1); }
+  100% { opacity: 0; transform: translate(80%, -75px) scale(0.5) rotate(25deg); }
+}
+
+/* ── Task completion burst ── */
+@keyframes particleShoot {
+  0%   { transform: translateY(0) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-22px) scale(0); opacity: 0; }
+}
+@keyframes checkStamp {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  60%  { transform: scale(1.3) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ── Streak heartbeat (milestone days) ── */
+@keyframes streakBeat {
+  0%,100% { transform: scale(1); }
+  25%     { transform: scale(1.22); }
+  55%     { transform: scale(0.92); }
+  75%     { transform: scale(1.08); }
+}
+
+/* ── Level-up screen flash & ring burst ── */
+@keyframes lvlFlash {
+  0%   { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+@keyframes ringBurst {
+  0%   { transform: translate(-50%, -50%) scale(0.15); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+}
+@keyframes lvlCount {
+  0%   { transform: translateY(12px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ── Nudge burst (FriendDetail) ── */
+@keyframes nudgeWave {
+  0%   { opacity: 0; transform: translateX(-50%) rotate(0deg) scale(0.6); }
+  15%  { opacity: 1; transform: translateX(-50%) rotate(-22deg) scale(1.1); }
+  30%  { transform: translateX(-50%) rotate(22deg) scale(1.1); }
+  45%  { transform: translateX(-50%) rotate(-22deg) scale(1.1); }
+  60%  { transform: translateX(-50%) rotate(22deg) scale(1.1); }
+  75%  { transform: translateX(-50%) rotate(0deg) scale(1.1); }
+  100% { opacity: 0; transform: translateX(-50%) rotate(0deg) scale(0.9) translateY(-10px); }
+}
+@keyframes nudgePulse {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.8); }
+  30%  { opacity: 0.8; transform: translateX(-50%) scale(1.2); }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.6); }
+}
