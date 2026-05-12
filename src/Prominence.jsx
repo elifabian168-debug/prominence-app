@@ -201,7 +201,10 @@ export default function Prominence() {
           </div>
         ) : showAddFriends ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
-            <AddFriendsScreen state={state} onBack={() => setShowAddFriends(false)} onAdd={addFriend} />
+            <AddFriendsScreen state={state} userName={user.name}
+              onBack={() => setShowAddFriends(false)}
+              onAdd={addFriend}
+              onInvited={(contact) => showToast(`Invite sent to ${contact.name}`)} />
           </div>
         ) : showFriends ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
@@ -380,15 +383,15 @@ export default function Prominence() {
           <div style={{
             position: "fixed", bottom: 168, left: "50%", zIndex: 60,
             background: "rgba(20,20,22,0.95)", backdropFilter: "blur(20px)",
-            border: `1px solid ${toast.color}40`, borderRadius: 99,
+            border: `1px solid color-mix(in srgb, ${toast.color} 25%, transparent)`, borderRadius: 99,
             padding: "10px 18px", display: "flex", alignItems: "center", gap: 8,
             animation: "toastIn 2.4s cubic-bezier(0.16,1,0.3,1) forwards",
             transform: "translateX(-50%)",
           }}>
             <div style={{ width: 16, height: 16, borderRadius: "50%", background: toast.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Check size={10} color={BG} strokeWidth={3} />
+              <Check size={10} color="#0A0A0B" strokeWidth={3} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 500, color: TEXT }}>{toast.message}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#FFFFFF" }}>{toast.message}</span>
           </div>
         )}
       </div>

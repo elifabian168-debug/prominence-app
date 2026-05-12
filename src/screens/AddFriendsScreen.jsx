@@ -1,22 +1,28 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, Users, X, Plus, Check, Flame } from "lucide-react";
-import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ChevronLeft, Users, X, Plus, Check, Flame, Link2, Phone } from "lucide-react";
+import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
 import { DISCOVERABLE_USERS } from "../constants/socialData";
 import { getLevelFromXP } from "../utils/xp";
+import InviteSheet from "../sheets/InviteSheet";
+import ContactsSheet from "../sheets/ContactsSheet";
 
-export default function AddFriendsScreen({ state, onBack, onAdd }) {
-  const [query, setQuery]   = useState("");
-  const [adding, setAdding] = useState(null);
+export default function AddFriendsScreen({ state, userName, onBack, onAdd, onInvited }) {
+  const [query, setQuery]                   = useState("");
+  const [adding, setAdding]                 = useState(null);
+  const [inviteOpen, setInviteOpen]         = useState(false);
+  const [contactsOpen, setContactsOpen]     = useState(false);
 
-  const existingIds = new Set((state.friends || []).map(f => f.id));
-  const available   = DISCOVERABLE_USERS.filter(u => !existingIds.has(u.id));
+  const existingIds = useMemo(() => new Set((state.friends || []).map(f => f.id)), [state.friends]);
+  const available   = useMemo(() => DISCOVERABLE_USERS.filter(u => !existingIds.has(u.id)), [existingIds]);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return available;
-    const q = query.toLowerCase().trim();
+    const raw = query.trim();
+    if (!raw) return available;
+    const q = raw.toLowerCase().replace(/^@/, "");
     return available.filter(u =>
       u.name.toLowerCase().includes(q) ||
+      (u.username || "").toLowerCase().includes(q) ||
       (ARCHETYPES[u.archetype]?.label || "").toLowerCase().includes(q)
     );
   }, [query, available]);
@@ -37,9 +43,42 @@ export default function AddFriendsScreen({ state, onBack, onAdd }) {
         <div style={{ fontSize: 12, color: TEXT_MID, marginTop: 4 }}>People in the Prominence community</div>
       </div>
 
+      {/* Quick actions: invite link + contacts */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button onClick={() => setInviteOpen(true)} style={{
+          flex: 1, padding: "12px 14px", borderRadius: 12,
+          background: `linear-gradient(135deg, ${alpha(ACCENT, "12")}, ${CARD})`,
+          border: `1px solid ${alpha(ACCENT, "40")}`,
+          color: TEXT, fontSize: 12, fontWeight: 500, cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 8, textAlign: "left",
+        }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: alpha(ACCENT, "20"), border: `1px solid ${alpha(ACCENT, "50")}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Link2 size={13} color={ACCENT} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Share invite</div>
+            <div style={{ fontSize: 10, color: TEXT_DIM }}>Send a personal link</div>
+          </div>
+        </button>
+        <button onClick={() => setContactsOpen(true)} style={{
+          flex: 1, padding: "12px 14px", borderRadius: 12,
+          background: CARD, border: `1px solid ${BORDER_BR}`,
+          color: TEXT, fontSize: 12, fontWeight: 500, cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 8, textAlign: "left",
+        }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: CARD_ELEV, border: `1px solid ${BORDER_BR}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Phone size={13} color={TEXT_MID} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>From contacts</div>
+            <div style={{ fontSize: 10, color: TEXT_DIM }}>Match phone book</div>
+          </div>
+        </button>
+      </div>
+
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
         <Users size={14} color={TEXT_DIM} />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name or archetype"
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name or @username"
           style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: TEXT, fontFamily: "inherit", fontSize: 13 }} />
         {query && (
           <button onClick={() => setQuery("")} style={{ background: "transparent", border: "none", color: TEXT_DIM, cursor: "pointer", padding: 0, display: "flex" }}>
@@ -55,10 +94,10 @@ export default function AddFriendsScreen({ state, onBack, onAdd }) {
       {filtered.length === 0 ? (
         <div style={{ background: CARD, border: `1px dashed ${BORDER_BR}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 13, color: TEXT_MID, marginBottom: 4 }}>No matches found</div>
-          <div style={{ fontSize: 11, color: TEXT_DIM }}>Try a different search</div>
+          <div style={{ fontSize: 11, color: TEXT_DIM }}>Try a different search, or invite them directly</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 24 }}>
           {filtered.map(user => {
             const arch = ARCHETYPES[user.archetype] || ARCHETYPES.balanced;
             const ArchI = arch.icon;
@@ -66,7 +105,7 @@ export default function AddFriendsScreen({ state, onBack, onAdd }) {
             const isAdding = adding === user.id;
             return (
               <div key={user.id} style={{
-                background: CARD, border: `1px solid ${isAdding ? ACCENT + "60" : BORDER}`,
+                background: CARD, border: `1px solid ${isAdding ? alpha(ACCENT, "60") : BORDER}`,
                 borderRadius: 14, padding: "12px 14px",
                 display: "flex", alignItems: "center", gap: 12,
                 opacity: isAdding ? 0.5 : 1,
@@ -77,8 +116,13 @@ export default function AddFriendsScreen({ state, onBack, onAdd }) {
                   <span style={{ fontFamily: SERIF, fontSize: 18, color: arch.color }}>{user.initial}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: TEXT, marginBottom: 2 }}>{user.name}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: TEXT }}>{user.name}</span>
+                    {user.username && (
+                      <span style={{ fontSize: 11, color: TEXT_DIM }}>@{user.username}</span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
                     <ArchI size={9} color={arch.color} />
                     <span style={{ fontSize: 10, color: TEXT_DIM }}>{arch.label} · Lv. {lvl}</span>
                     {user.streak >= 7 && (
@@ -102,12 +146,13 @@ export default function AddFriendsScreen({ state, onBack, onAdd }) {
         </div>
       )}
 
-      <div style={{ marginTop: 24, padding: "14px 16px", borderRadius: 12, background: CARD, border: `1px solid ${BORDER}` }}>
-        <div style={{ fontSize: 11, color: TEXT_DIM, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>Coming soon</div>
-        <div style={{ fontSize: 12, color: TEXT_MID, lineHeight: 1.55 }}>
-          Search by username, share invite links, and find friends through your contacts once Prominence ships.
-        </div>
-      </div>
+      <InviteSheet open={inviteOpen} userName={userName} onClose={() => setInviteOpen(false)} />
+      <ContactsSheet
+        open={contactsOpen}
+        existingFriendIds={existingIds}
+        onClose={() => setContactsOpen(false)}
+        onAdd={onAdd}
+        onInvited={onInvited} />
     </div>
   );
 }
