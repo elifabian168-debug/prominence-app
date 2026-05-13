@@ -184,8 +184,8 @@ export default function Prominence() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "'Inter', -apple-system, sans-serif", paddingBottom: 90 }}>
-      <div style={{ maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div className="app-atmos" style={{ background: BG, minHeight: "100vh", color: TEXT, paddingBottom: 90 }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
 
         {showLifeStats ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
@@ -230,7 +230,8 @@ export default function Prominence() {
                   onOpenActions={openActions} onOpenFriends={() => setShowFriends(true)}
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
-                  onAddWeekly={() => openCreateModal("weekly")} />
+                  onAddWeekly={() => openCreateModal("weekly")}
+                  onCreateQuest={() => openCreateModal("normal")} />
               </div>
             )}
             {activeTab === "stats" && (

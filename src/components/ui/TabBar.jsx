@@ -13,7 +13,8 @@ export default function TabBar({ activeTab, onTabChange, onAdd }) {
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
-      background: "rgba(10,10,11,0.85)", backdropFilter: "blur(20px)",
+      background: "rgba(10,10,11,0.78)", backdropFilter: "blur(24px) saturate(140%)",
+      WebkitBackdropFilter: "blur(24px) saturate(140%)",
       borderTop: `1px solid ${BORDER}`,
     }}>
       <div style={{
@@ -25,28 +26,48 @@ export default function TabBar({ activeTab, onTabChange, onAdd }) {
           const I = t.icon;
           if (t.isAdd) {
             return (
-              <button key={t.id} onClick={onAdd} style={{
-                width: 48, height: 48, borderRadius: "50%",
-                background: ACCENT, border: "none", color: BG,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", boxShadow: `0 4px 16px ${alpha(ACCENT, "40")}`, marginTop: -8,
-              }}>
-                <I size={22} strokeWidth={2.5} />
+              <button key={t.id} onClick={onAdd} aria-label="Create quest"
+                className="tappable"
+                style={{
+                  width: 52, height: 52, borderRadius: "50%",
+                  background: `linear-gradient(135deg, ${ACCENT} 0%, ${alpha(ACCENT, "85")} 100%)`,
+                  border: "none", color: BG,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: `0 6px 22px ${alpha(ACCENT, "55")}, inset 0 1px 0 ${alpha("#fff", "30")}`,
+                  marginTop: -12,
+                }}>
+                <I size={24} strokeWidth={2.8} />
               </button>
             );
           }
           const active = activeTab === t.id;
           return (
-            <button key={t.id} onClick={() => onTabChange(t.id)} style={{
-              background: "transparent", border: "none",
-              color: active ? ACCENT : TEXT_DIM, cursor: "pointer",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-              padding: "4px 8px",
-            }}>
-              <I size={20} />
-              <span style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}>
+            <button key={t.id} onClick={() => onTabChange(t.id)}
+              className="tappable"
+              style={{
+                background: "transparent", border: "none",
+                color: active ? ACCENT : TEXT_DIM, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                padding: "4px 8px",
+                position: "relative",
+                transition: "color 0.2s",
+              }}>
+              <I size={20} strokeWidth={active ? 2.2 : 1.8} />
+              <span style={{
+                fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
+                fontWeight: active ? 700 : 500,
+              }}>
                 {t.label}
               </span>
+              {active && (
+                <div style={{
+                  position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
+                  width: 4, height: 4, borderRadius: "50%",
+                  background: ACCENT,
+                  boxShadow: `0 0 8px ${ACCENT}`,
+                }} />
+              )}
             </button>
           );
         })}

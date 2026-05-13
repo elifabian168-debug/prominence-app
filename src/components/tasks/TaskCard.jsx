@@ -40,7 +40,7 @@ export default function TaskCard({ task, isMain, onComplete, onActions }) {
         }}>
           {pressed && (
             <Check
-              size={15} color={BG} strokeWidth={3}
+              size={15} color="#0A0A0B" strokeWidth={3}
               style={{ animation: "checkStamp 0.22s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
             />
           )}

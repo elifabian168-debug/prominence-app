@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 /* ── Themes ──
    Colors are exposed as CSS custom properties so they swap at runtime
@@ -8,7 +8,10 @@
 :root,
 :root[data-theme="dark"] {
   --accent:     #E8B14A;
+  --accent-warm: #F4C468;
+  --accent-deep: #B8862E;
   --bg:         #0A0A0B;
+  --bg-elev:    #0F0F11;
   --card:       #141416;
   --card-elev:  #1A1A1D;
   --border:     #1F1F23;
@@ -19,10 +22,15 @@
   --hover-bg:   #1F1F23;
   --hover-br:   #3A3A3F;
   --hover-fg:   #FFFFFF;
+  --noise-opacity: 0.035;
+  --grain-mix:  multiply;
 }
 :root[data-theme="light"] {
   --accent:     #B8862E;
+  --accent-warm: #D4A046;
+  --accent-deep: #8B6520;
   --bg:         #FAFAF7;
+  --bg-elev:    #F5F2EC;
   --card:       #FFFFFF;
   --card-elev:  #F2EFE8;
   --border:     #E7E2D6;
@@ -33,12 +41,60 @@
   --hover-bg:   #EFECE3;
   --hover-br:   #C9C3B5;
   --hover-fg:   #1A1A1B;
+  --noise-opacity: 0.05;
+  --grain-mix:  multiply;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); transition: background 0.25s ease, color 0.25s ease; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.25s ease, color 0.25s ease;
+}
 button { font-family: inherit; }
 ::-webkit-scrollbar { display: none; }
+
+/* ── Atmospheric backdrop ── */
+/* A subtle grain + ambient bloom layer rendered above the bg color but
+   below all content. Apply via .app-atmos on the app root. */
+.app-atmos {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+.app-atmos::before {
+  content: "";
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+  opacity: var(--noise-opacity);
+  mix-blend-mode: var(--grain-mix);
+  pointer-events: none;
+  z-index: 0;
+}
+.app-atmos::after {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(60% 40% at 50% -5%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    radial-gradient(80% 50% at 50% 105%, color-mix(in srgb, var(--accent-deep, var(--accent)) 6%, transparent), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bloom helper: sits behind a hero element for ambient color */
+.bloom {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  pointer-events: none;
+  z-index: -1;
+}
 
 .friend-tap { transition: transform 0.12s ease, opacity 0.12s ease; }
 .friend-tap:active  { transform: scale(0.96); opacity: 0.8; }
@@ -47,16 +103,25 @@ button { font-family: inherit; }
 .task-actions-btn:hover  { background: var(--hover-bg) !important; color: var(--hover-fg) !important; border-color: var(--hover-br) !important; }
 .task-actions-btn:active { transform: scale(0.92); }
 
-/* Universal tactile press state. Add `tappable` to any interactive element
-   to give it a brief scale-down on press — answers "did my tap register?" */
+/* Universal tactile press state */
 .tappable { transition: transform 80ms ease-out; }
 .tappable:active { transform: scale(0.97); }
 
+/* Staggered entrance for any list. Apply .stagger to the container; each
+   direct child fades in 70ms after the previous. Use --stagger-base to
+   offset the whole sequence if needed. */
+.stagger > * {
+  opacity: 0;
+  animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger-base, 0ms) + (var(--i, 0) * 70ms));
+}
+
 /* ── Layout animations ── */
-@keyframes fadeUp    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp    { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn    { from { opacity: 0; }                             to { opacity: 1; } }
 @keyframes scaleIn   { from { opacity: 0; transform: scale(0.7); }      to { opacity: 1; transform: scale(1); } }
 @keyframes screenIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
 
 @keyframes heroIn {
   0%   { opacity: 0; transform: scale(0.94) translateY(8px); }
@@ -72,6 +137,54 @@ button { font-family: inherit; }
 @keyframes ringPulse {
   0%,100% { filter: drop-shadow(0 0 8px var(--accent, #E8B14A)); opacity: 0.8; }
   50%     { filter: drop-shadow(0 0 22px var(--accent, #E8B14A)); opacity: 1; }
+}
+
+/* ── Archetype aura (Profile hero) ── */
+@keyframes archetypeAura {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.18); opacity: 0.85; }
+}
+@keyframes archetypeOrbit {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Ambient bloom drift ── */
+@keyframes bloomDrift {
+  0%, 100% { transform: translate(-8%, 0) scale(1); }
+  50%      { transform: translate(8%, -4%) scale(1.08); }
+}
+
+/* ── Notification bell ring ── */
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10%      { transform: rotate(14deg); }
+  20%      { transform: rotate(-12deg); }
+  30%      { transform: rotate(10deg); }
+  40%      { transform: rotate(-8deg); }
+  50%      { transform: rotate(4deg); }
+  60%      { transform: rotate(0deg); }
+}
+
+/* ── Podium shimmer (top leaderboard rank) ── */
+@keyframes podiumShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Monthly completion burst ── */
+@keyframes monthBurst {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes monthRing {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes awardFloat {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-4px) rotate(2deg); }
 }
 
 /* ── XP / float ── */

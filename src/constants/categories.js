@@ -14,5 +14,5 @@ export const ARCHETYPES = {
   monk:     { label: "Monk",     icon: Brain,     color: "#6EE7B7", desc: "Master of mind"        },
   artisan:  { label: "Artisan",  icon: Briefcase, color: "#A78BFA", desc: "Builder of craft"      },
   vitalist: { label: "Vitalist", icon: Heart,     color: "#E89B8A", desc: "Champion of life"      },
-  balanced: { label: "Balanced", icon: Sparkles,  color: "#FFFFFF", desc: "Harmonized in all"     },
+  balanced: { label: "Balanced", icon: Sparkles,  color: "#A8A8B3", desc: "Harmonized in all"     },
 };
