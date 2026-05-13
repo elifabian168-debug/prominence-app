@@ -8,6 +8,7 @@ import { advanceFriendStreaks } from '../utils/social';
 import { getInitialState } from '../utils/state';
 import { SEED_FRIENDS } from '../constants/socialData';
 import { TEXT_MID } from '../constants/theme';
+import { fireLocalNotification } from '../utils/notifications';
 
 export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge }) {
   const [user, setUser] = useState(() => {
@@ -132,25 +133,36 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     const scheduleNext = () => {
       const delay = (10 + Math.random() * 20) * 60 * 1000;
       return setTimeout(() => {
+        let fired = null;
         setState(prev => {
           const friends = prev.friends || [];
           if (friends.length === 0) return prev;
+          if (prev.notifications?.friendActivity === false) return prev;
           const friend = friends[Math.floor(Math.random() * friends.length)];
           const isNudge = Math.random() < 0.25;
           const messages = isNudge
             ? [`${friend.name} sent you a nudge`, `${friend.name} thinks you're slacking`]
             : [`${friend.name} cheered your progress`, `${friend.name} is rooting for you`, `${friend.name} sent you a sparkle`];
+          const msg = messages[Math.floor(Math.random() * messages.length)];
+          fired = { name: friend.name, msg, isNudge };
           return {
             ...prev,
             cheersReceived: [
               { id: Date.now() + Math.random(), fromId: friend.id, fromName: friend.name,
                 kind: isNudge ? "nudge_in" : "cheer_in",
-                message: messages[Math.floor(Math.random() * messages.length)],
+                message: msg,
                 createdAt: Date.now(), read: false },
               ...(prev.cheersReceived || []),
             ].slice(0, 30),
           };
         });
+        if (fired) {
+          fireLocalNotification(
+            fired.isNudge ? `Nudge from ${fired.name}` : `Cheer from ${fired.name}`,
+            fired.msg,
+            { tag: `friend-activity-${Date.now()}` },
+          );
+        }
         timer = scheduleNext();
       }, delay);
     };
@@ -206,7 +218,16 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     for (const e of effects) {
       if (e.kind === "gain") onXpGain(e.payload);
       else if (e.kind === "capToast") showToast("Daily cap reached — task completed", TEXT_MID);
-      else if (e.kind === "levelUp") onLevelUp(e.payload);
+      else if (e.kind === "levelUp") {
+        onLevelUp(e.payload);
+        if (state.notifications?.levelUp !== false) {
+          fireLocalNotification(
+            `Level ${e.payload} reached`,
+            "Your prominence rises. Keep climbing.",
+            { tag: `level-up-${e.payload}` },
+          );
+        }
+      }
     }
   };
 
@@ -491,16 +512,29 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
         const messages = type === "nudge"
           ? [`${friend.name} acknowledged your nudge`, `${friend.name} is on it`]
           : [`${friend.name} cheered you back!`, `${friend.name} liked your hustle`, `${friend.name} appreciated the boost`];
-        setState(prev => ({
-          ...prev,
-          cheersReceived: [
-            { id: Date.now() + Math.random(), fromId: friend.id, fromName: friend.name,
-              kind: type === "nudge" ? "nudge_back" : "cheer_back",
-              message: messages[Math.floor(Math.random() * messages.length)],
-              createdAt: Date.now(), read: false },
-            ...(prev.cheersReceived || []),
-          ].slice(0, 30),
-        }));
+        const msg = messages[Math.floor(Math.random() * messages.length)];
+        let fire = false;
+        setState(prev => {
+          if (prev.notifications?.friendActivity === false) return prev;
+          fire = true;
+          return {
+            ...prev,
+            cheersReceived: [
+              { id: Date.now() + Math.random(), fromId: friend.id, fromName: friend.name,
+                kind: type === "nudge" ? "nudge_back" : "cheer_back",
+                message: msg,
+                createdAt: Date.now(), read: false },
+              ...(prev.cheersReceived || []),
+            ].slice(0, 30),
+          };
+        });
+        if (fire) {
+          fireLocalNotification(
+            type === "nudge" ? `${friend.name} responded` : `${friend.name} cheered back`,
+            msg,
+            { tag: `cheer-back-${Date.now()}` },
+          );
+        }
       }, delay);
     }
     return true;

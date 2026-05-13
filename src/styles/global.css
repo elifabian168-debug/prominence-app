@@ -284,3 +284,9 @@ button { font-family: inherit; }
   30%  { opacity: 0.8; transform: translateX(-50%) scale(1.2); }
   100% { opacity: 0; transform: translateX(-50%) scale(1.6); }
 }
+
+/* ── Spinner ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
