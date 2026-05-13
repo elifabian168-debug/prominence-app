@@ -1,7 +1,7 @@
 // Cron-triggered at 11pm every day (see vercel.json).
 // Final warning: streak is at risk if no quest completed today.
 import webpush from "web-push";
-import { redis } from "../_lib/redis.js";
+import { adminDb, SUBSCRIPTIONS_COLLECTION } from "../_lib/firebase-admin.js";
 
 const MESSAGES = [
   { title: "Your streak is on the line", body: "One quest before midnight keeps the fire alive." },
@@ -20,18 +20,17 @@ export default async function handler(req, res) {
   );
 
   try {
-    const keys = await redis.keys("sub:*");
+    const snapshot = await adminDb.collection(SUBSCRIPTIONS_COLLECTION).get();
     const message = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
     const payload = JSON.stringify({ ...message, tag: "prominence-streak", url: "/" });
 
-    const results = await Promise.allSettled(keys.map(async (k) => {
-      const sub = await redis.get(k);
-      if (!sub) return;
+    const results = await Promise.allSettled(snapshot.docs.map(async (docSnap) => {
+      const sub = docSnap.data();
       try {
         await webpush.sendNotification(sub, payload);
       } catch (err) {
         if (err.statusCode === 404 || err.statusCode === 410) {
-          await redis.del(k);
+          await docSnap.ref.delete();
         }
         throw err;
       }
@@ -39,7 +38,7 @@ export default async function handler(req, res) {
 
     const sent = results.filter(r => r.status === "fulfilled").length;
     const failed = results.length - sent;
-    res.status(200).json({ sent, failed, total: keys.length });
+    res.status(200).json({ sent, failed, total: snapshot.size });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
   }

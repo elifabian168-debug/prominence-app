@@ -6,7 +6,7 @@ import {
   permissionState,
   requestPermission,
   subscribeToPush,
-  sendSubscriptionToServer,
+  saveSubscriptionToFirestore,
   unsubscribeFromPush,
   isCurrentlySubscribed,
   notificationsSupported,
@@ -44,8 +44,7 @@ export default function NotificationsSheet({ open, prefs, onClose, onToggle }) {
         return;
       }
       const sub = await subscribeToPush();
-      const ok = await sendSubscriptionToServer(sub);
-      if (!ok) throw new Error("Server rejected subscription");
+      await saveSubscriptionToFirestore(sub);
       setSubscribed(true);
     } catch (e) {
       setError(e.message || "Couldn't enable push notifications");

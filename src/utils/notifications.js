@@ -1,9 +1,11 @@
 // Browser notification + Web Push helpers.
-// - `fireLocalNotification` shows an immediate notification (used for in-app
-//   events like cheers/level-ups). Works as long as the browser is open.
-// - `requestPermission` + `subscribeToPush` + `sendSubscriptionToServer` form
-//   the chain that registers a user with the Vercel push API for scheduled
-//   re-engagement pushes (daily reminder, streak-at-risk).
+// - `fireLocalNotification` shows an immediate in-app notification (used for
+//   cheers/level-ups). Works as long as the browser is open.
+// - `requestPermission` + `subscribeToPush` + `saveSubscriptionToFirestore`
+//   form the chain that registers a device with Firestore so the Vercel cron
+//   jobs can send scheduled pushes (daily reminder, streak-at-risk).
+import { doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { db, SUBSCRIPTIONS_COLLECTION, subscriptionDocId } from "./firebase";
 
 export function notificationsSupported() {
   return typeof window !== "undefined" && "Notification" in window;
@@ -22,8 +24,7 @@ export async function requestPermission() {
   if (!notificationsSupported()) return "unsupported";
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
-  const result = await Notification.requestPermission();
-  return result;
+  return await Notification.requestPermission();
 }
 
 export function fireLocalNotification(title, body, options = {}) {
@@ -70,13 +71,20 @@ export async function subscribeToPush() {
   });
 }
 
-export async function sendSubscriptionToServer(subscription) {
-  const res = await fetch("/api/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(subscription),
+// PushSubscription objects don't serialize cleanly (they have getters and
+// methods), so round-trip through JSON to get a plain object Firestore accepts.
+function subscriptionToPlain(sub) {
+  return JSON.parse(JSON.stringify(sub));
+}
+
+export async function saveSubscriptionToFirestore(subscription) {
+  const id = subscriptionDocId(subscription.endpoint);
+  await setDoc(doc(db, SUBSCRIPTIONS_COLLECTION, id), {
+    ...subscriptionToPlain(subscription),
+    createdAt: serverTimestamp(),
+    userAgent: navigator.userAgent.slice(0, 200),
   });
-  return res.ok;
+  return true;
 }
 
 export async function unsubscribeFromPush() {
@@ -84,11 +92,12 @@ export async function unsubscribeFromPush() {
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;
-  await fetch("/api/unsubscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint: sub.endpoint }),
-  }).catch(() => {});
+  try {
+    const id = subscriptionDocId(sub.endpoint);
+    await deleteDoc(doc(db, SUBSCRIPTIONS_COLLECTION, id));
+  } catch {
+    // Don't block local unsubscribe on a Firestore failure
+  }
   await sub.unsubscribe();
 }
 
