@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, Plus, Flame, Sparkles, Calendar, Crown, Medal, Award } from "lucide-react";
+import { ChevronLeft, Plus, Flame, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 
 const WEEKLY_ACCENT = "#7CA9F2";
@@ -55,7 +55,7 @@ const RANK_THEMES = {
   3: { color: BRONZE, label: "3rd", icon: Award,  shadow: "40", border: "55" },
 };
 
-export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd }) {
+export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd, onOpenGroups, groupCount = 0, pendingInviteCount = 0 }) {
   const [tab, setTab] = useState("activity");
   const friends = state.friends || [];
   const friendStreaks = state.friendStreaks || {};
@@ -103,6 +103,72 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
           <Plus size={14} strokeWidth={2.8} /> Add
         </button>
       </div>
+
+      {/* Orders entry */}
+      {onOpenGroups && (
+        <button
+          onClick={onOpenGroups}
+          className="tappable"
+          style={{
+            width: "100%",
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "14px 16px",
+            marginBottom: 22,
+            background: pendingInviteCount > 0
+              ? `linear-gradient(135deg, ${alpha(ACCENT, "16")} 0%, ${CARD} 70%)`
+              : CARD,
+            border: `1px solid ${pendingInviteCount > 0 ? alpha(ACCENT, "50") : BORDER}`,
+            borderRadius: 14,
+            cursor: "pointer",
+            textAlign: "left",
+            boxShadow: pendingInviteCount > 0 ? `0 0 22px ${alpha(ACCENT, "15")}` : "none",
+          }}
+        >
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: alpha(ACCENT, "12"),
+            border: `1px solid ${alpha(ACCENT, "40")}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <Shield size={16} color={ACCENT} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 9, color: TEXT_DIM,
+              letterSpacing: "0.3em", textTransform: "uppercase",
+              fontWeight: 700, marginBottom: 4,
+            }}>
+              The Orders
+            </div>
+            <div style={{ fontFamily: SERIF, fontSize: 18, color: TEXT, lineHeight: 1, letterSpacing: "0.01em" }}>
+              {groupCount === 0 ? "Found your first" : `${groupCount} bond${groupCount > 1 ? "s" : ""}`}
+            </div>
+          </div>
+          {pendingInviteCount > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 9px",
+              background: alpha(ACCENT, "18"),
+              border: `1px solid ${alpha(ACCENT, "55")}`,
+              borderRadius: 99,
+              color: ACCENT,
+              fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.18em", textTransform: "uppercase",
+              animation: "fadeIn 0.4s ease",
+            }}>
+              <Mail size={9} />
+              {pendingInviteCount} new
+            </div>
+          )}
+          <div style={{
+            fontSize: 10, color: ACCENT,
+            letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700,
+          }}>
+            Open →
+          </div>
+        </button>
+      )}
 
       {/* Friend Streaks */}
       {activeStreaks.length > 0 && (

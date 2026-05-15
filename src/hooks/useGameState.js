@@ -7,6 +7,7 @@ import { getLevelFromXP, applyDailyCap } from '../utils/xp';
 import { advanceFriendStreaks } from '../utils/social';
 import { getInitialState } from '../utils/state';
 import { SEED_FRIENDS } from '../constants/socialData';
+import { SEED_GROUPS, SEED_GROUP_INVITES, applyGroupActivityTick } from '../constants/groupsData';
 import { TEXT_MID } from '../constants/theme';
 import { fireLocalNotification } from '../utils/notifications';
 
@@ -43,6 +44,15 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
           parsed.categoryXPToday = { fitness: 0, school: 0, life: 0, work: 0, mind: 0 };
         }
         if (!parsed.friends) parsed.friends = SEED_FRIENDS;
+        if (!parsed.groups) parsed.groups = SEED_GROUPS;
+        if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
+        // Backfill group XP fields for pre-XP-system saved groups
+        parsed.groups = (parsed.groups || []).map((g) => ({
+          ...g,
+          groupXP: g.groupXP ?? 0,
+          streakDays: g.streakDays ?? 0,
+          lastActivityDate: g.lastActivityDate ?? null,
+        }));
         // Migrate older saved state for new fields
         if (!parsed.weeklyQuests) parsed.weeklyQuests = [];
         if (parsed.lastWeeklyReminderDate === undefined) parsed.lastWeeklyReminderDate = null;
@@ -191,6 +201,16 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     const today = todayKey();
     const todayLog = prev.activityLog[today] || { xp: 0, count: 0 };
 
+    // Record any new levels reached (handles multi-level jumps).
+    const prevHistory = prev.levelHistory || [];
+    const newLevelEntries = [];
+    if (newLevel > prevLevel) {
+      const now = Date.now();
+      for (let lv = prevLevel + 1; lv <= newLevel; lv++) {
+        newLevelEntries.push({ level: lv, achievedAt: now });
+      }
+    }
+
     return {
       ...prev,
       totalXP: newTotal,
@@ -202,6 +222,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
       completedHistory: { ...prev.completedHistory, completed: prev.completedHistory.completed + 1 },
       streak: prev.streak === 0 ? 1 : prev.streak,
       longestStreak: Math.max(prev.longestStreak, prev.streak === 0 ? 1 : prev.streak),
+      levelHistory: newLevelEntries.length ? [...prevHistory, ...newLevelEntries] : prevHistory,
       activityLog: {
         ...prev.activityLog,
         [today]: { xp: todayLog.xp + actualXP, count: todayLog.count + 1 },
@@ -211,6 +232,9 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
         ...(prev.completedTasks || []),
       ].slice(0, 50),
       friendStreaks: advanceFriendStreaks(prev.friendStreaks, today, prev.friendActiveDays || {}),
+      // Tick each of the user's orders for today's activity. Awards
+      // STREAK_MILESTONE group XP every Nth consecutive active day.
+      groups: applyGroupActivityTick(prev.groups, today),
     };
   };
 

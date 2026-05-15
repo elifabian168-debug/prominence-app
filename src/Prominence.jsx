@@ -6,7 +6,10 @@ import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_MID } from "./constants
 import { useToast } from "./hooks/useToast";
 import { useUndoAction } from "./hooks/useUndoAction";
 import { useGameState } from "./hooks/useGameState";
+import { useGroups } from "./hooks/useGroups";
+import { getInitialState } from "./utils/state";
 import { useTheme } from "./hooks/useTheme";
+import { getArchetype } from "./utils/archetype";
 
 import Onboarding from "./components/onboarding/Onboarding";
 import TabBar from "./components/ui/TabBar";
@@ -26,6 +29,12 @@ import FriendsScreen from "./screens/FriendsScreen";
 import FriendDetailScreen from "./screens/FriendDetailScreen";
 import AddFriendsScreen from "./screens/AddFriendsScreen";
 import MonthDetailScreen from "./screens/MonthDetailScreen";
+import GroupsScreen from "./screens/GroupsScreen";
+import GroupDetailScreen from "./screens/GroupDetailScreen";
+import CreateGroupScreen from "./screens/CreateGroupScreen";
+import SealedScroll from "./components/groups/SealedScroll";
+import InviteFriendSheet from "./components/groups/InviteFriendSheet";
+import SharedQuestCreateSheet from "./components/groups/SharedQuestCreateSheet";
 
 import EditProfileSheet from "./sheets/EditProfileSheet";
 import NotificationsSheet from "./sheets/NotificationsSheet";
@@ -86,6 +95,22 @@ export default function Prominence() {
   const [notifCenterOpen, setNotifCenterOpen]   = useState(false);
   const [proSheetOpen, setProSheetOpen]         = useState(false);
   const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
+
+  // ── Groups (Orders) state ─────────────────────────────────────────────────
+  const [showGroups, setShowGroups]                 = useState(false);
+  const [groupDetail, setGroupDetail]               = useState(null);          // group object currently open
+  const [creatingGroup, setCreatingGroup]           = useState(false);
+  const [respondingToInvite, setRespondingToInvite] = useState(null);          // invite object
+  const [invitingForGroup, setInvitingForGroup]     = useState(null);          // group when picking friend
+  const [sendingInvite, setSendingInvite]           = useState(null);          // { group, friend } when previewing scroll
+  const [forgingQuestFor, setForgingQuestFor]       = useState(null);          // group for SharedQuestCreateSheet
+
+  const {
+    groups, groupInvites, canCreateMore,
+    createGroup, inviteFriend, cancelInvite,
+    acceptInvite, declineInvite, leaveGroup,
+    createSharedQuest, markContributed,
+  } = useGroups(state, setState);
 
   // ── Action handlers ───────────────────────────────────────────────────────
   // kind: "task" | "main" | "weekly"
@@ -177,10 +202,51 @@ export default function Prominence() {
 
   // ── Onboarding guard ──────────────────────────────────────────────────────
   if (!user) {
-    return <Onboarding onComplete={(u, firstQuest) => { setUser(u); }} />;
+    return <Onboarding onComplete={(u, firstQuest) => { setUser(u); setState(getInitialState(firstQuest)); }} />;
   }
 
-  const showOverlayNav = !showLifeStats && !showFriends && !showAddFriends && !friendDetail && !monthDetail;
+  const showOverlayNav =
+    !showLifeStats && !showFriends && !showAddFriends && !friendDetail && !monthDetail &&
+    !showGroups && !groupDetail && !creatingGroup;
+
+  const userArchetype = getArchetype(state.statXP);
+  const userWeeklyXP  = state.activityLog?.[new Date().toISOString().slice(0, 10)]?.xp || 0;
+
+  const handleAcceptInvite = (invite) => {
+    acceptInvite(invite.groupId);
+    setRespondingToInvite(null);
+    // After accepting, find the new group by id and open it
+    setTimeout(() => {
+      const joined = (state.groups || []).find((g) => g.id === invite.groupId);
+      // joined won't exist in this stale closure — instead let useGroups state propagate
+      // and let user tap from list. For UX, just navigate to GroupsScreen.
+      setShowGroups(true);
+      setGroupDetail(null);
+    }, 200);
+    showToast(`Joined ${invite.groupName}`);
+  };
+
+  const handleDeclineInvite = (invite) => {
+    declineInvite(invite.groupId);
+    setRespondingToInvite(null);
+    showToast("Summons declined");
+  };
+
+  const handleSendInvite = () => {
+    if (!sendingInvite) return;
+    inviteFriend(sendingInvite.group.id, sendingInvite.friend.id);
+    showToast(`Summoned ${sendingInvite.friend.name}`);
+    setSendingInvite(null);
+  };
+
+  const handleForgeSharedQuest = (payload) => {
+    if (!forgingQuestFor) return;
+    createSharedQuest(forgingQuestFor.id, payload);
+    setForgingQuestFor(null);
+    showToast("Shared quest forged");
+  };
+
+  const refreshedGroupDetail = groupDetail ? groups.find((g) => g.id === groupDetail.id) : null;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -206,13 +272,62 @@ export default function Prominence() {
               onAdd={addFriend}
               onInvited={(contact) => showToast(`Invite sent to ${contact.name}`)} />
           </div>
+        ) : creatingGroup ? (
+          <div style={{ animation: "screenIn 0.3s ease" }}>
+            <CreateGroupScreen
+              userArchetype={userArchetype}
+              onBack={() => setCreatingGroup(false)}
+              onConfirm={(payload) => {
+                const g = createGroup(payload);
+                setCreatingGroup(false);
+                if (g) {
+                  setGroupDetail(g);
+                  showToast(`${g.name} founded`);
+                }
+              }}
+            />
+          </div>
+        ) : refreshedGroupDetail ? (
+          <div key={refreshedGroupDetail.id} style={{ animation: "heroIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)" }}>
+            <GroupDetailScreen
+              group={refreshedGroupDetail}
+              friends={state.friends || []}
+              userName={user.name}
+              userArchetype={userArchetype}
+              userWeeklyXP={userWeeklyXP}
+              onBack={() => setGroupDetail(null)}
+              onInvite={() => setInvitingForGroup(refreshedGroupDetail)}
+              onCancelInvite={(gid, fid) => { cancelInvite(gid, fid); showToast("Summons recalled"); }}
+              onCreateSharedQuest={(g) => setForgingQuestFor(g)}
+              onContributeShared={(gid, qid) => markContributed(gid, qid)}
+              onLeaveGroup={(gid) => { leaveGroup(gid); setGroupDetail(null); showToast("Left the order"); }}
+            />
+          </div>
+        ) : showGroups ? (
+          <div style={{ animation: "screenIn 0.3s ease" }}>
+            <GroupsScreen
+              groups={groups}
+              groupInvites={groupInvites}
+              friends={state.friends || []}
+              canCreateMore={canCreateMore}
+              userArchetype={userArchetype}
+              userWeeklyXP={userWeeklyXP}
+              onOpenGroup={(g) => setGroupDetail(g)}
+              onOpenCreate={() => setCreatingGroup(true)}
+              onOpenInvite={(invite) => setRespondingToInvite(invite)}
+              onBack={() => setShowGroups(false)}
+            />
+          </div>
         ) : showFriends ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
             <FriendsScreen state={state} userXP={state.totalXP} userName={user.name}
               onBack={() => setShowFriends(false)}
               onOpenFriend={setFriendDetail}
               onCheer={sendCheer}
-              onOpenAdd={() => setShowAddFriends(true)} />
+              onOpenAdd={() => setShowAddFriends(true)}
+              onOpenGroups={() => setShowGroups(true)}
+              groupCount={groups.length}
+              pendingInviteCount={groupInvites.length} />
           </div>
         ) : monthDetail ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
@@ -253,7 +368,7 @@ export default function Prominence() {
             )}
             {activeTab === "profile" && (
               <div style={{ animation: "screenIn 0.25s ease" }}>
-                <ProfileScreen name={user.name} bio={user.bio} state={state}
+                <ProfileScreen name={user.name} bio={user.bio} createdAt={user.createdAt} state={state}
                   onReset={() => setConfirmReset(true)}
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onEditProfile={() => setEditProfileOpen(true)}
@@ -294,6 +409,59 @@ export default function Prominence() {
         <TaskActionSheet task={actionTask} kind={actionKind} open={!!actionTask}
           onClose={closeActions} onEdit={handleEdit}
           onFail={handleFailRequest} onDelete={handleDeleteRequest} />
+
+        {/* ── Groups (Orders) overlays ── */}
+        {respondingToInvite && (
+          <SealedScroll
+            mode="receive"
+            groupName={respondingToInvite.groupName}
+            motto={respondingToInvite.motto}
+            themeColor={respondingToInvite.themeColor}
+            crestSeed={respondingToInvite.crestSeed}
+            fromName={respondingToInvite.fromName}
+            onAccept={() => handleAcceptInvite(respondingToInvite)}
+            onDecline={() => handleDeclineInvite(respondingToInvite)}
+          />
+        )}
+
+        {sendingInvite && (
+          <SealedScroll
+            mode="send"
+            groupName={sendingInvite.group.name}
+            motto={sendingInvite.group.motto}
+            themeColor={sendingInvite.group.themeColor}
+            crestSeed={sendingInvite.group.crestSeed}
+            toName={sendingInvite.friend.name}
+            onSend={handleSendInvite}
+            onCancel={() => setSendingInvite(null)}
+          />
+        )}
+
+        <InviteFriendSheet
+          open={!!invitingForGroup}
+          friends={state.friends || []}
+          group={invitingForGroup}
+          onClose={() => setInvitingForGroup(null)}
+          onPick={(friend) => {
+            const group = invitingForGroup;
+            setInvitingForGroup(null);
+            setTimeout(() => setSendingInvite({ group, friend }), 80);
+          }}
+        />
+
+        {forgingQuestFor && (
+          <SharedQuestCreateSheet
+            open
+            group={forgingQuestFor}
+            members={forgingQuestFor.memberIds.map((id) => {
+              if (id === "me") return { id: "me", name: user.name, initial: user.name[0]?.toUpperCase() || "Y", archetype: userArchetype, isMe: true };
+              const f = (state.friends || []).find((x) => x.id === id);
+              return f || { id, name: "Unknown", initial: "?", archetype: "balanced" };
+            })}
+            onClose={() => setForgingQuestFor(null)}
+            onForge={handleForgeSharedQuest}
+          />
+        )}
 
         {editTask && (
           <TaskEditModal task={editTask.task}

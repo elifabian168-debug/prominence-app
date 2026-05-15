@@ -1,5 +1,6 @@
 import { todayKey } from "./date";
 import { SEED_FRIENDS } from "../constants/socialData";
+import { SEED_GROUPS, SEED_GROUP_INVITES } from "../constants/groupsData";
 
 export const getInitialState = (firstQuest) => {
   const tasks = [];
@@ -22,6 +23,7 @@ export const getInitialState = (firstQuest) => {
     lastWeeklyReminderDate: null,
     streak: 0,
     longestStreak: 0,
+    levelHistory: [{ level: 1, achievedAt: Date.now() }],
     completedHistory: { completed: 0, failed: 0 },
     statXP: { strength: 0, intellect: 0, discipline: 0, vitality: 0, craft: 0 },
     categoryXP: { fitness: 0, school: 0, life: 0, work: 0, mind: 0 },
@@ -30,6 +32,8 @@ export const getInitialState = (firstQuest) => {
     activityLog: {},
     monthlyCompletions: {},
     friends: SEED_FRIENDS,
+    groups: SEED_GROUPS,
+    groupInvites: SEED_GROUP_INVITES,
     friendStreaks: {},
     cheersGiven: {},
     nudgesGiven: {},

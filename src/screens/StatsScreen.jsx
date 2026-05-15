@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { ACCENT, BORDER, BORDER_BR, CARD, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { CATEGORIES } from "../constants/categories";
 import { DAILY_CATEGORY_CAP } from "../constants/questData";
-import { getLevelFromXP } from "../utils/xp";
+import { getLevelFromXP, formatXP } from "../utils/xp";
 import { lastNDayKeys, todayKey } from "../utils/date";
 import StatCard from "../components/ui/StatCard";
 
@@ -56,7 +56,6 @@ export default function StatsScreen({ state }) {
     return buckets;
   }, [activityLog]);
   const maxMonth = Math.max(1, ...monthlyData.map(m => m.xp));
-  const formatXP = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n;
 
   return (
     <div style={{ padding: "24px 20px 0", position: "relative" }}>

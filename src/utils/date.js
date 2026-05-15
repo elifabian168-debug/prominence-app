@@ -20,6 +20,16 @@ export const dayOffset = (n) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+export const formatShortDate = (ts) => {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+export const formatMonthYear = (ts) => {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+};
+
 export const formatRelativeTime = (minutes) => {
   if (minutes < 1)    return "just now";
   if (minutes < 60)   return `${minutes}m ago`;

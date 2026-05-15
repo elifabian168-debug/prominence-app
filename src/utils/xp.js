@@ -35,6 +35,32 @@ export const applyDailyCap = (proposedXP, category, categoryXPToday) => {
 
 export const xpForLevel = (level) => Math.floor(100 * Math.pow(1.15, level - 1));
 
+export const formatXP = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+
+export const toRoman = (num) => {
+  if (!Number.isFinite(num) || num <= 0) return "I";
+  const map = [["M",1000],["CM",900],["D",500],["CD",400],["C",100],["XC",90],["L",50],["XL",40],["X",10],["IX",9],["V",5],["IV",4],["I",1]];
+  let out = "", n = Math.floor(num);
+  for (const [r, v] of map) { while (n >= v) { out += r; n -= v; } }
+  return out;
+};
+
+// Tier system — named ranks with threshold levels. The threshold level
+// triggers the cinematic level-up moment; other levels get the mini card.
+const TIERS = [
+  { name: "Ascendant", threshold: 50 },
+  { name: "Luminary",  threshold: 35 },
+  { name: "Sovereign", threshold: 20 },
+  { name: "Adept",     threshold: 10 },
+  { name: "Acolyte",   threshold: 5  },
+  { name: "Initiate",  threshold: 1  },
+];
+
+export const getTier = (level) => {
+  const tier = TIERS.find(t => level >= t.threshold) || TIERS[TIERS.length - 1];
+  return { name: tier.name, threshold: tier.threshold, isThreshold: level === tier.threshold && level > 1 };
+};
+
 export const getLevelFromXP = (totalXP) => {
   let level = 1, used = 0;
   while (used + xpForLevel(level) <= totalXP) {
