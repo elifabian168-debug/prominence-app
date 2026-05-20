@@ -87,6 +87,25 @@ button { font-family: inherit; }
   z-index: 0;
 }
 
+/* ── Desktop frame ──
+   Above 640px the 480 column reads as a lit manuscript page floating
+   in atmospheric darkness. Below 640px nothing applies — phones see
+   the page edge-to-edge as before. */
+@media (min-width: 640px) {
+  .app-page {
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-elev) 80%, transparent);
+    box-shadow:
+      0 0 60px color-mix(in srgb, var(--accent) 14%, transparent),
+      0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) inset,
+      0 30px 80px rgba(0, 0, 0, 0.55);
+    margin-top: 24px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+}
+
 /* Bloom helper: sits behind a hero element for ambient color */
 .bloom {
   position: absolute;

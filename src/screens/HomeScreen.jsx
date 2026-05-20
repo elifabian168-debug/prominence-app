@@ -1,16 +1,18 @@
-import { Bell, Flame, Users, Calendar, Plus, Sparkles } from "lucide-react";
+import { Bell, Flame, Users, Calendar, Plus, Sparkles, Shield } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
+import { GROUP_THEMES } from "../constants/groupsData";
 import { todayKey } from "../utils/date";
 import { getLevelFromXP } from "../utils/xp";
 import { getArchetype } from "../utils/archetype";
 import TaskCard from "../components/tasks/TaskCard";
 import WeeklyQuestCard from "../components/tasks/WeeklyQuestCard";
+import GroupCrest from "../components/groups/GroupCrest";
 
 const WEEKLY_ACCENT = "#7CA9F2";
 const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
 
-export default function HomeScreen({ state, name, levelingUp, xpGains, completeTask, completeMainQuest, completeWeeklyQuest, onOpenActions, onOpenFriends, onOpenLifeStats, onOpenNotifs, onAddWeekly, onCreateQuest }) {
+export default function HomeScreen({ state, name, levelingUp, xpGains, completeTask, completeMainQuest, completeWeeklyQuest, onOpenActions, onOpenFriends, onOpenLifeStats, onOpenNotifs, onAddWeekly, onCreateQuest, groups = [], groupInvites = [], onOpenGroups, onOpenOrder }) {
   const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
   const { totalXP, tasks, mainQuest, streak } = state;
   const pendingWeekly = (state.weeklyQuests || []).filter(q => q.status === "pending");
@@ -162,6 +164,42 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
               <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginTop: 1 }}>{state.friends?.length || 0} active</div>
             </div>
           </button>
+          <button onClick={onOpenGroups} style={{
+            flex: 1, position: "relative",
+            background: groupInvites.length > 0
+              ? `linear-gradient(135deg, ${alpha(ACCENT, "12")}, ${CARD})`
+              : CARD,
+            border: `1px solid ${groupInvites.length > 0 ? alpha(ACCENT, "40") : BORDER}`,
+            borderRadius: 12, padding: "10px 12px", cursor: "pointer",
+            textAlign: "left", fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 10,
+            boxShadow: groupInvites.length > 0 ? `0 0 14px ${alpha(ACCENT, "18")}` : "none",
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+              background: groupInvites.length > 0 ? alpha(ACCENT, "15") : CARD_BLEND(TEXT_MID),
+              border: `1px solid ${groupInvites.length > 0 ? alpha(ACCENT, "45") : BORDER_BR}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Shield size={13} color={groupInvites.length > 0 ? ACCENT : TEXT_MID} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 9, color: TEXT_DIM, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Orders</div>
+              <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginTop: 1 }}>
+                {groups.length === 0 ? "None yet" : `${groups.length} sworn`}
+              </div>
+            </div>
+            {groupInvites.length > 0 && (
+              <div style={{
+                position: "absolute", top: -4, right: -4,
+                minWidth: 16, height: 16, borderRadius: 99,
+                background: ACCENT, color: BG, fontSize: 9, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "0 4px", border: `2px solid ${BG}`,
+                animation: "notifBadge 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}>{groupInvites.length > 9 ? "9+" : groupInvites.length}</div>
+            )}
+          </button>
         </div>
       </div>
 
@@ -204,6 +242,90 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
                     <span style={{ fontSize: 10, color: TEXT_MID, fontWeight: 500 }}>{friend.name}</span>
                     {atRisk && <span style={{ fontSize: 9, color: "#F87171", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>at risk</span>}
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* In your orders — last 1-2 events across all the user's orders */}
+      {(() => {
+        if (!groups || groups.length === 0) return null;
+        const events = [];
+        for (const g of groups) {
+          for (const e of (g.activityFeed || [])) {
+            events.push({ event: e, group: g });
+          }
+        }
+        if (events.length === 0) return null;
+        events.sort((a, b) => b.event.timestamp - a.event.timestamp);
+        const top = events.slice(0, 2);
+        return (
+          <div style={{ marginBottom: 22 }}>
+            <div style={{
+              fontSize: 10, color: alpha(ACCENT, "90"),
+              letterSpacing: "0.22em", textTransform: "uppercase",
+              marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontWeight: 600,
+            }}>
+              <Shield size={11} color={ACCENT} /> In Your Orders
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {top.map(({ event, group }) => {
+                const theme = GROUP_THEMES[group.themeColor] || GROUP_THEMES.solar;
+                const actor = event.actorId === "me"
+                  ? { name, isMe: true }
+                  : (state.friends || []).find((f) => f.id === event.actorId) || { name: "Someone" };
+                const who = actor.isMe ? "You" : actor.name;
+                const text = (() => {
+                  switch (event.type) {
+                    case "contribution":     return `${who} contributed to "${event.payload?.questTitle || "a quest"}"`;
+                    case "quest_complete":   return `"${event.payload?.questTitle || "Shared quest"}" complete`;
+                    case "quest_created":    return `${who} forged "${event.payload?.questTitle || "a quest"}"`;
+                    case "member_join":      return `${who} joined the order`;
+                    case "founded":          return `${who} founded the order`;
+                    case "streak_milestone": return `${event.payload?.streakDays || ""}-day streak`;
+                    case "level_up":         return `Reached Level ${event.payload?.newLevel || ""}`;
+                    default:                  return "Activity";
+                  }
+                })();
+                const mins = Math.max(0, Math.floor((Date.now() - event.timestamp) / 60000));
+                const ago = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / 1440)}d ago`;
+                return (
+                  <button
+                    key={event.id}
+                    onClick={() => onOpenOrder?.(group)}
+                    className="tappable"
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 10px",
+                      background: CARD,
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 10,
+                      cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ flexShrink: 0 }}>
+                      <GroupCrest seed={group.crestSeed} themeColor={group.themeColor} size={32} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 12, color: TEXT, lineHeight: 1.35,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {text}
+                      </div>
+                      <div style={{ fontSize: 9, color: TEXT_DIM, marginTop: 2, letterSpacing: "0.06em" }}>
+                        {group.name} · {ago}
+                      </div>
+                    </div>
+                    {event.xpDelta > 0 && (
+                      <div style={{
+                        fontFamily: SERIF, fontSize: 12, color: theme.color, fontWeight: 600,
+                        flexShrink: 0, fontVariantNumeric: "tabular-nums",
+                      }}>+{event.xpDelta}</div>
+                    )}
+                  </button>
                 );
               })}
             </div>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { STORAGE_USER, STORAGE_STATE } from '../constants/storage';
 import { CATEGORIES } from '../constants/categories';
-import { MONTHLY_QUESTS } from '../constants/questData';
 import { todayKey } from '../utils/date';
 import { getLevelFromXP, applyDailyCap } from '../utils/xp';
 import { advanceFriendStreaks } from '../utils/social';
@@ -11,7 +10,22 @@ import { SEED_GROUPS, SEED_GROUP_INVITES, applyGroupActivityTick } from '../cons
 import { TEXT_MID } from '../constants/theme';
 import { fireLocalNotification } from '../utils/notifications';
 
-export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge }) {
+// Drop activityLog entries older than 90 days. The log only grows by one
+// key per day, so doing this once at hydration time is enough.
+const ACTIVITY_LOG_RETENTION_DAYS = 90;
+const pruneActivityLog = (log) => {
+  if (!log) return {};
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ACTIVITY_LOG_RETENTION_DAYS);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+  const next = {};
+  for (const k of Object.keys(log)) {
+    if (k >= cutoffKey) next[k] = log[k];
+  }
+  return next;
+};
+
+export function useGameState({ showToast, onLevelUp, onXpGain }) {
   const [user, setUser] = useState(() => {
     try {
       const s = localStorage.getItem(STORAGE_USER);
@@ -46,12 +60,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
         if (!parsed.friends) parsed.friends = SEED_FRIENDS;
         if (!parsed.groups) parsed.groups = SEED_GROUPS;
         if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
-        // Backfill group XP fields for pre-XP-system saved groups
+        // Backfill group XP + activity-feed fields for older saved groups
         parsed.groups = (parsed.groups || []).map((g) => ({
           ...g,
           groupXP: g.groupXP ?? 0,
           streakDays: g.streakDays ?? 0,
           lastActivityDate: g.lastActivityDate ?? null,
+          activityFeed: g.activityFeed ?? [],
         }));
         // Migrate older saved state for new fields
         if (!parsed.weeklyQuests) parsed.weeklyQuests = [];
@@ -72,6 +87,8 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
         };
         if (parsed.categoryXP) parsed.categoryXP = clampBuckets(parsed.categoryXP, parsed.totalXP || 0);
         if (parsed.statXP)     parsed.statXP     = clampBuckets(parsed.statXP,     parsed.totalXP || 0);
+
+        parsed.activityLog = pruneActivityLog(parsed.activityLog);
 
         return parsed;
       }
@@ -112,73 +129,8 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const tick = () => {
-      const today = todayKey();
-      setState(prev => {
-        const fids = Object.keys(prev.friendStreaks || {});
-        if (fids.length === 0) return prev;
-        const next = { ...(prev.friendActiveDays || {}) };
-        let changed = false;
-        for (const fid of fids) {
-          if (next[fid] !== today && Math.random() < 0.8) {
-            next[fid] = today;
-            changed = true;
-          }
-        }
-        if (!changed) return prev;
-        const userActive = (prev.activityLog[today]?.count || 0) > 0;
-        const newStreaks = userActive
-          ? advanceFriendStreaks(prev.friendStreaks, today, next)
-          : prev.friendStreaks;
-        return { ...prev, friendActiveDays: next, friendStreaks: newStreaks };
-      });
-    };
-    tick();
-    const id = setInterval(tick, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const scheduleNext = () => {
-      const delay = (10 + Math.random() * 20) * 60 * 1000;
-      return setTimeout(() => {
-        let fired = null;
-        setState(prev => {
-          const friends = prev.friends || [];
-          if (friends.length === 0) return prev;
-          if (prev.notifications?.friendActivity === false) return prev;
-          const friend = friends[Math.floor(Math.random() * friends.length)];
-          const isNudge = Math.random() < 0.25;
-          const messages = isNudge
-            ? [`${friend.name} sent you a nudge`, `${friend.name} thinks you're slacking`]
-            : [`${friend.name} cheered your progress`, `${friend.name} is rooting for you`, `${friend.name} sent you a sparkle`];
-          const msg = messages[Math.floor(Math.random() * messages.length)];
-          fired = { name: friend.name, msg, isNudge };
-          return {
-            ...prev,
-            cheersReceived: [
-              { id: Date.now() + Math.random(), fromId: friend.id, fromName: friend.name,
-                kind: isNudge ? "nudge_in" : "cheer_in",
-                message: msg,
-                createdAt: Date.now(), read: false },
-              ...(prev.cheersReceived || []),
-            ].slice(0, 30),
-          };
-        });
-        if (fired) {
-          fireLocalNotification(
-            fired.isNudge ? `Nudge from ${fired.name}` : `Cheer from ${fired.name}`,
-            fired.msg,
-            { tag: `friend-activity-${Date.now()}` },
-          );
-        }
-        timer = scheduleNext();
-      }, delay);
-    };
-    let timer = scheduleNext();
-    return () => clearTimeout(timer);
-  }, []);
+  // Friend simulators (random activity ticks + inbound cheers/nudges) live in
+  // useFriends now — that hook owns the social state and its mock generators.
 
   // Pure reducer: applies an XP award to the given prev state and returns the next state.
   // Reads cap/total from prev (not closure) so it's safe under rapid completions.
@@ -400,31 +352,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     flushEffects(effects);
   };
 
-  // Fix: compute allDone from current state before calling setState to avoid stale closure
-  const completeMonthlyQuest = (monthKey, questIdx) => {
-    const completed = state.monthlyCompletions[monthKey] || [];
-    if (completed.includes(questIdx)) return;
-    const nextCompleted = [...completed, questIdx];
-    const allDone = nextCompleted.length === MONTHLY_QUESTS[monthKey].questCount;
-
-    setState(prev => {
-      const prevCompleted = prev.monthlyCompletions[monthKey] || [];
-      if (prevCompleted.includes(questIdx)) return prev;
-      const updated = [...prevCompleted, questIdx];
-      return {
-        ...prev,
-        monthlyCompletions: { ...prev.monthlyCompletions, [monthKey]: updated },
-        totalXP: prev.totalXP + 30 + (allDone ? 250 : 0),
-      };
-    });
-
-    if (allDone) {
-      setTimeout(() => onMonthlyBadge({ monthKey, bonusXP: 250 }), 400);
-    } else {
-      showToast("+30 XP · Quest complete");
-    }
-  };
-
   const saveEdit = (task, isMain, updates) => {
     if (isMain) {
       setState(prev => ({ ...prev, mainQuest: { ...prev.mainQuest, ...updates } }));
@@ -516,105 +443,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     setState(getInitialState());
   };
 
-  const sendCheer = (friend, type = "cheer") => {
-    const today = todayKey();
-    const lastMap = type === "nudge" ? state.nudgesGiven : state.cheersGiven;
-    const lastSent = lastMap[friend.id];
-    if (lastSent === today) {
-      showToast(type === "nudge" ? "Already nudged today" : "Already cheered today", TEXT_MID);
-      return false;
-    }
-    setState(prev => {
-      const key = type === "nudge" ? "nudgesGiven" : "cheersGiven";
-      return { ...prev, [key]: { ...prev[key], [friend.id]: today } };
-    });
-    showToast(type === "nudge" ? `Nudged ${friend.name}` : `Cheered ${friend.name}`);
-
-    if (Math.random() < 0.6) {
-      const delay = 20000 + Math.random() * 40000;
-      setTimeout(() => {
-        const messages = type === "nudge"
-          ? [`${friend.name} acknowledged your nudge`, `${friend.name} is on it`]
-          : [`${friend.name} cheered you back!`, `${friend.name} liked your hustle`, `${friend.name} appreciated the boost`];
-        const msg = messages[Math.floor(Math.random() * messages.length)];
-        let fire = false;
-        setState(prev => {
-          if (prev.notifications?.friendActivity === false) return prev;
-          fire = true;
-          return {
-            ...prev,
-            cheersReceived: [
-              { id: Date.now() + Math.random(), fromId: friend.id, fromName: friend.name,
-                kind: type === "nudge" ? "nudge_back" : "cheer_back",
-                message: msg,
-                createdAt: Date.now(), read: false },
-              ...(prev.cheersReceived || []),
-            ].slice(0, 30),
-          };
-        });
-        if (fire) {
-          fireLocalNotification(
-            type === "nudge" ? `${friend.name} responded` : `${friend.name} cheered back`,
-            msg,
-            { tag: `cheer-back-${Date.now()}` },
-          );
-        }
-      }, delay);
-    }
-    return true;
-  };
-
-  const toggleFriendStreak = (friend) => {
-    const existing = state.friendStreaks[friend.id];
-    if (existing) {
-      setState(prev => {
-        const next = { ...prev.friendStreaks };
-        delete next[friend.id];
-        return { ...prev, friendStreaks: next };
-      });
-      showToast(`Friend Streak with ${friend.name} ended`, TEXT_MID);
-    } else {
-      setState(prev => ({
-        ...prev,
-        friendStreaks: {
-          ...prev.friendStreaks,
-          [friend.id]: { count: 1, lastBoth: todayKey(), aliveToday: true },
-        },
-      }));
-      showToast(`Friend Streak with ${friend.name} started!`);
-    }
-  };
-
-  const removeFriend = (friend) => {
-    setState(prev => {
-      const next = { ...prev };
-      next.friends = prev.friends.filter(f => f.id !== friend.id);
-      if (next.friendStreaks) {
-        const s = { ...next.friendStreaks }; delete s[friend.id]; next.friendStreaks = s;
-      }
-      if (next.friendActiveDays) {
-        const d = { ...next.friendActiveDays }; delete d[friend.id]; next.friendActiveDays = d;
-      }
-      if (next.cheersGiven) {
-        const c = { ...next.cheersGiven }; delete c[friend.id]; next.cheersGiven = c;
-      }
-      if (next.nudgesGiven) {
-        const n = { ...next.nudgesGiven }; delete n[friend.id]; next.nudgesGiven = n;
-      }
-      return next;
-    });
-    showToast(`${friend.name} removed`, TEXT_MID);
-  };
-
-  const addFriend = (newFriend) => {
-    if (state.friends.some(f => f.id === newFriend.id)) {
-      showToast("Already in your circle", TEXT_MID);
-      return;
-    }
-    setState(prev => ({ ...prev, friends: [...prev.friends, newFriend] }));
-    showToast(`Added ${newFriend.name}`);
-  };
-
   const updateProfile = ({ name, bio }) => {
     setUser(prev => ({ ...prev, name: name?.trim() || prev.name, bio: bio?.trim() ?? prev.bio }));
     showToast("Profile updated");
@@ -632,28 +460,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain, onMonthlyBadge })
     showToast("Welcome to Prominence Pro");
   };
 
-  const markAllNotificationsRead = () => {
-    setState(prev => ({
-      ...prev,
-      cheersReceived: (prev.cheersReceived || []).map(n => ({ ...n, read: true })),
-    }));
-  };
-
-  const dismissNotification = (id) => {
-    setState(prev => ({
-      ...prev,
-      cheersReceived: (prev.cheersReceived || []).filter(n => n.id !== id),
-    }));
-  };
-
   return {
     user, setUser, state, setState,
     handleCreateTask, completeTask, completeMainQuest,
-    completeMonthlyQuest, saveEdit, markFailed, deleteTask,
+    saveEdit, markFailed, deleteTask,
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
     hasPendingWeeklyInCategory,
-    resetAll, sendCheer, toggleFriendStreak, addFriend, removeFriend,
+    resetAll,
     updateProfile, toggleNotification, upgradeToPro,
-    markAllNotificationsRead, dismissNotification,
   };
 }

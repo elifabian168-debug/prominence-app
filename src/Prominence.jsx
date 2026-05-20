@@ -7,6 +7,7 @@ import { useToast } from "./hooks/useToast";
 import { useUndoAction } from "./hooks/useUndoAction";
 import { useGameState } from "./hooks/useGameState";
 import { useGroups } from "./hooks/useGroups";
+import { useFriends } from "./hooks/useFriends";
 import { getInitialState } from "./utils/state";
 import { useTheme } from "./hooks/useTheme";
 import { getArchetype } from "./utils/archetype";
@@ -15,7 +16,6 @@ import Onboarding from "./components/onboarding/Onboarding";
 import TabBar from "./components/ui/TabBar";
 import ConfirmDialog from "./components/ui/ConfirmDialog";
 import LevelUpMoment from "./components/moments/LevelUpMoment";
-import MonthlyBadgeMoment from "./components/moments/MonthlyBadgeMoment";
 import TaskCreateModal from "./components/tasks/TaskCreateModal";
 import TaskActionSheet from "./components/tasks/TaskActionSheet";
 import TaskEditModal from "./components/tasks/TaskEditModal";
@@ -28,7 +28,6 @@ import LifeStatsScreen from "./screens/LifeStatsScreen";
 import FriendsScreen from "./screens/FriendsScreen";
 import FriendDetailScreen from "./screens/FriendDetailScreen";
 import AddFriendsScreen from "./screens/AddFriendsScreen";
-import MonthDetailScreen from "./screens/MonthDetailScreen";
 import GroupsScreen from "./screens/GroupsScreen";
 import GroupDetailScreen from "./screens/GroupDetailScreen";
 import CreateGroupScreen from "./screens/CreateGroupScreen";
@@ -52,16 +51,14 @@ export default function Prominence() {
   const [showLevelUp, setShowLevelUp]     = useState(null);
   const [levelingUp, setLevelingUp]       = useState(false);
   const [xpGains, setXpGains]             = useState([]);
-  const [monthlyBadge, setMonthlyBadge]   = useState(null);
 
   const {
     user, setUser, state, setState,
     handleCreateTask, completeTask, completeMainQuest,
-    completeMonthlyQuest, saveEdit, markFailed, deleteTask,
+    saveEdit, markFailed, deleteTask,
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
-    resetAll, sendCheer, toggleFriendStreak, addFriend, removeFriend,
+    resetAll,
     updateProfile, toggleNotification, upgradeToPro,
-    markAllNotificationsRead, dismissNotification,
   } = useGameState({
     showToast,
     onLevelUp: (level) => {
@@ -72,7 +69,6 @@ export default function Prominence() {
       setXpGains(g => [...g, gain]);
       setTimeout(() => setXpGains(g => g.filter(x => x.id !== gain.id)), 1400);
     },
-    onMonthlyBadge: setMonthlyBadge,
   });
 
   // ── UI state ─────────────────────────────────────────────────────────────
@@ -89,7 +85,6 @@ export default function Prominence() {
   const [showFriends, setShowFriends]           = useState(false);
   const [showAddFriends, setShowAddFriends]     = useState(false);
   const [friendDetail, setFriendDetail]         = useState(null);
-  const [monthDetail, setMonthDetail]           = useState(null);
   const [editProfileOpen, setEditProfileOpen]   = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifCenterOpen, setNotifCenterOpen]   = useState(false);
@@ -111,6 +106,11 @@ export default function Prominence() {
     acceptInvite, declineInvite, leaveGroup,
     createSharedQuest, markContributed,
   } = useGroups(state, setState);
+
+  const {
+    sendCheer, toggleFriendStreak, addFriend, removeFriend,
+    markAllNotificationsRead, dismissNotification,
+  } = useFriends(state, setState, { showToast });
 
   // ── Action handlers ───────────────────────────────────────────────────────
   // kind: "task" | "main" | "weekly"
@@ -206,24 +206,23 @@ export default function Prominence() {
   }
 
   const showOverlayNav =
-    !showLifeStats && !showFriends && !showAddFriends && !friendDetail && !monthDetail &&
+    !showLifeStats && !showFriends && !showAddFriends && !friendDetail &&
     !showGroups && !groupDetail && !creatingGroup;
 
   const userArchetype = getArchetype(state.statXP);
   const userWeeklyXP  = state.activityLog?.[new Date().toISOString().slice(0, 10)]?.xp || 0;
 
   const handleAcceptInvite = (invite) => {
-    acceptInvite(invite.groupId);
+    const joined = acceptInvite(invite.groupId);
     setRespondingToInvite(null);
-    // After accepting, find the new group by id and open it
-    setTimeout(() => {
-      const joined = (state.groups || []).find((g) => g.id === invite.groupId);
-      // joined won't exist in this stale closure — instead let useGroups state propagate
-      // and let user tap from list. For UX, just navigate to GroupsScreen.
+    if (joined) {
+      setGroupDetail(joined);
+      showToast(`Joined ${invite.groupName}`);
+    } else {
+      // Cap hit — invite was still consumed but no group added.
       setShowGroups(true);
-      setGroupDetail(null);
-    }, 200);
-    showToast(`Joined ${invite.groupName}`);
+      showToast("Maximum orders reached", TEXT_MID);
+    }
   };
 
   const handleDeclineInvite = (invite) => {
@@ -251,7 +250,7 @@ export default function Prominence() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-atmos" style={{ background: BG, minHeight: "100vh", color: TEXT, paddingBottom: 90 }}>
-      <div style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
+      <div className="app-page" style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
 
         {showLifeStats ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
@@ -329,11 +328,6 @@ export default function Prominence() {
               groupCount={groups.length}
               pendingInviteCount={groupInvites.length} />
           </div>
-        ) : monthDetail ? (
-          <div style={{ animation: "screenIn 0.3s ease" }}>
-            <MonthDetailScreen monthKey={monthDetail} state={state}
-              onBack={() => setMonthDetail(null)} onComplete={completeMonthlyQuest} />
-          </div>
         ) : (
           <>
             {/* Each tab gets its own animation wrapper — no key needed on the parent */}
@@ -346,7 +340,11 @@ export default function Prominence() {
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onAddWeekly={() => openCreateModal("weekly")}
-                  onCreateQuest={() => openCreateModal("normal")} />
+                  onCreateQuest={() => openCreateModal("normal")}
+                  groups={groups}
+                  groupInvites={groupInvites}
+                  onOpenGroups={() => setShowGroups(true)}
+                  onOpenOrder={(g) => setGroupDetail(g)} />
               </div>
             )}
             {activeTab === "stats" && (
@@ -362,8 +360,7 @@ export default function Prominence() {
                   onAdd={() => openCreateModal("normal")}
                   onAddWeekly={() => openCreateModal("weekly")}
                   onOpenActions={openActions}
-                  onDelete={handleDeleteRequest}
-                  onOpenMonth={setMonthDetail} />
+                  onDelete={handleDeleteRequest} />
               </div>
             )}
             {activeTab === "profile" && (
@@ -524,10 +521,6 @@ export default function Prominence() {
 
         {showLevelUp !== null && (
           <LevelUpMoment level={showLevelUp} onDismiss={() => setShowLevelUp(null)} />
-        )}
-
-        {monthlyBadge && (
-          <MonthlyBadgeMoment monthKey={monthlyBadge.monthKey} onDismiss={() => setMonthlyBadge(null)} />
         )}
 
         {/* Fix #1: undo at bottom 110, toast at bottom 168 so they never overlap */}

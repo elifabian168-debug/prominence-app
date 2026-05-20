@@ -17,7 +17,6 @@ const NOTIF_ITEMS = [
   { key: "streakAtRisk",    label: "Streak at risk",  desc: "Warning at 11pm if you haven't completed a quest" },
   { key: "friendActivity",  label: "Friend activity", desc: "Cheers, nudges, and shared streak alerts" },
   { key: "levelUp",         label: "Level up",        desc: "Celebrate when you reach a new level" },
-  { key: "monthlyComplete", label: "Monthly quest",   desc: "Notify when a monthly line is finished" },
 ];
 
 const GREEN = "#6EE7B7";

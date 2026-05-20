@@ -6,6 +6,7 @@ import { GROUP_THEMES, getGroupLevelFromXP } from "../constants/groupsData";
 import { formatXP, toRoman } from "../utils/xp";
 import GroupCrest from "../components/groups/GroupCrest";
 import SharedQuestCard from "../components/groups/SharedQuestCard";
+import OrderActivityRow from "../components/groups/OrderActivityRow";
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -388,6 +389,29 @@ export default function GroupDetailScreen({
           <UserPlus size={14} />
           Summon a Friend
         </button>
+
+        {/* Recent activity */}
+        {(() => {
+          const feed = (group.activityFeed || []).slice(0, 12);
+          if (feed.length === 0) return null;
+          return (
+            <>
+              <SectionHeader label="Recent" count={feed.length} color={theme.color} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
+                {feed.map((event, i) => (
+                  <div key={event.id} style={{ animation: `fadeUp 0.4s ease ${i * 40}ms both` }}>
+                    <OrderActivityRow
+                      event={event}
+                      group={group}
+                      friends={friends}
+                      userName={userName}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          );
+        })()}
 
         {/* Shared quests */}
         <SectionHeader label="Shared Quests" count={activeQuests.length + completedQuests.length} color={theme.color} />

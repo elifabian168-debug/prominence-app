@@ -1,4 +1,4 @@
-import { X, Star, Sparkles, TrendingUp, Award, Heart } from "lucide-react";
+import { X, Star, Sparkles, TrendingUp, Heart } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import BottomSheet from "../components/ui/BottomSheet";
 
@@ -6,7 +6,6 @@ const FEATURES = [
   { icon: Star,       title: "All themes",         desc: "Unlock the full theme library" },
   { icon: Sparkles,   title: "Custom categories",  desc: "Build your own quest types" },
   { icon: TrendingUp, title: "Advanced analytics", desc: "Trends, projections, exports" },
-  { icon: Award,      title: "All monthly quests", desc: "Pre-order future months" },
   { icon: Heart,      title: "Support development",desc: "Help Prominence keep growing" },
 ];
 
@@ -28,7 +27,7 @@ export default function ProUpgradeSheet({ open, isPro, onClose, onUpgrade }) {
         <div style={{ fontSize: 11, color: ACCENT, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8 }}>Prominence Pro</div>
         <div style={{ fontFamily: SERIF, fontSize: 36, lineHeight: 1.1, marginBottom: 8 }}>{isPro ? "You're a Pro" : "Unlock everything"}</div>
         <div style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.5 }}>
-          {isPro ? "Thank you for supporting Prominence." : "Custom categories, all themes, advanced stats, and every monthly quest."}
+          {isPro ? "Thank you for supporting Prominence." : "Custom categories, all themes, and advanced stats."}
         </div>
       </div>
 

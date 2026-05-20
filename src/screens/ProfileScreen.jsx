@@ -30,7 +30,7 @@ function deriveMilestones(state, createdAt) {
     firstQuestAt,
     highestDayXP: highestDay.xp,
     highestDayDate: highestDay.date,
-    monthsCompleted: Object.keys(state.monthlyCompletions || {}).length,
+    totalQuests: state.completedHistory?.completed || 0,
   };
 }
 
@@ -425,9 +425,9 @@ export default function ProfileScreen({ name, bio, createdAt, state, onReset, on
           />
           <MilestoneTile
             icon={Trophy}
-            label="Months Done"
-            value={milestones.monthsCompleted}
-            sub={milestones.monthsCompleted > 0 ? "Monthly quests" : "None yet"}
+            label="Total Quests"
+            value={milestones.totalQuests}
+            sub={milestones.totalQuests > 0 ? "Quests completed" : "None yet"}
             accentColor={archColor}
           />
         </div>

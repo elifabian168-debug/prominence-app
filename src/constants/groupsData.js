@@ -61,8 +61,57 @@ const endOfToday = () => {
   return d.getTime();
 };
 
+// ── Activity feed event types ──
+// Each order keeps a chronological log of meaningful events. Feed is capped
+// at MAX_FEED_LENGTH (oldest pruned on write).
+export const FEED_EVENT_TYPES = {
+  CONTRIBUTION:      "contribution",        // a member contributed to a shared quest
+  QUEST_COMPLETE:    "quest_complete",      // all members contributed, quest done
+  QUEST_CREATED:     "quest_created",       // a member forged a new shared quest
+  MEMBER_JOIN:       "member_join",         // a member accepted an invite
+  FOUNDED:           "founded",             // a member founded the order
+  STREAK_MILESTONE:  "streak_milestone",    // group's collective streak hit a milestone
+  LEVEL_UP:          "level_up",            // group reached a new level
+};
+
+export const MAX_FEED_LENGTH = 30;
+
+// Pure helper: prepend an event to a group's activityFeed and trim.
+export function pushFeedEvent(group, event) {
+  const feed = group.activityFeed || [];
+  return {
+    ...group,
+    activityFeed: [event, ...feed].slice(0, MAX_FEED_LENGTH),
+  };
+}
+
 // ── Seed groups ──
 // 1 group the user already founded — visible immediately on GroupsScreen.
+// Seed activity feed timestamps are computed at module load relative to
+// `now`, so on first state-init the feed reads "12h ago / 1d ago / ..." etc.
+const _seedNow = Date.now();
+const _hoursAgo = (h) => _seedNow - h * 60 * 60 * 1000;
+const _daysAgo = (d) => _seedNow - d * 24 * 60 * 60 * 1000;
+
+const SEED_IRON_SUN_FEED = [
+  { id: _hoursAgo(12) + 0.1, type: "contribution", actorId: "f2", timestamp: _hoursAgo(12), xpDelta: 25,
+    payload: { questId: "sq_iron_1", questTitle: "All move 30 min today" } },
+  { id: _daysAgo(1) + 0.2, type: "level_up", timestamp: _daysAgo(1),
+    payload: { newLevel: 4 } },
+  { id: _daysAgo(2) + 0.3, type: "streak_milestone", timestamp: _daysAgo(2), xpDelta: 50,
+    payload: { streakDays: 3 } },
+  { id: _daysAgo(3) + 0.4, type: "quest_created", actorId: "me", timestamp: _daysAgo(3),
+    payload: { questId: "sq_iron_1", questTitle: "All move 30 min today", category: "fitness" } },
+  { id: _daysAgo(5) + 0.5, type: "contribution", actorId: "f1", timestamp: _daysAgo(5), xpDelta: 25,
+    payload: { questId: "sq_iron_past", questTitle: "Read 30 pages this week" } },
+  { id: _daysAgo(8) + 0.6, type: "member_join", actorId: "f1", timestamp: _daysAgo(8), xpDelta: 100,
+    payload: { memberId: "f1", memberName: "Jordan" } },
+  { id: _daysAgo(10) + 0.7, type: "member_join", actorId: "f2", timestamp: _daysAgo(10), xpDelta: 100,
+    payload: { memberId: "f2", memberName: "Sasha" } },
+  { id: _daysAgo(12) + 0.8, type: "founded", actorId: "me", timestamp: _daysAgo(12),
+    payload: { memberId: "me", memberName: "You", groupName: "The Iron Sun" } },
+];
+
 export const SEED_GROUPS = [
   {
     id: "g_iron_sun",
@@ -95,6 +144,7 @@ export const SEED_GROUPS = [
         status: "active",
       },
     ],
+    activityFeed: SEED_IRON_SUN_FEED,
   },
 ];
 
@@ -151,12 +201,12 @@ export const getGroupLevelFromXP = (totalXP) => {
 
 // Pure helper: given a list of groups, advance the "active today" streak
 // for any group the user is in. Awards STREAK_MILESTONE XP every Nth day.
+// Pushes streak_milestone + level_up events into each affected group's feed.
 //
 // Called from useGameState whenever the user awards XP (any personal quest
 // completion). Idempotent within a single calendar day.
 export function applyGroupActivityTick(groups, todayKey) {
   if (!groups || groups.length === 0) return groups;
-  // Yesterday as YYYY-MM-DD (assumes todayKey() format from utils/date.js)
   const yesterday = (() => {
     const d = new Date(`${todayKey}T00:00:00`);
     d.setDate(d.getDate() - 1);
@@ -164,17 +214,42 @@ export function applyGroupActivityTick(groups, todayKey) {
   })();
   return groups.map((g) => {
     if (!g.memberIds?.includes("me")) return g;
-    if (g.lastActivityDate === todayKey) return g; // already counted today
+    if (g.lastActivityDate === todayKey) return g;
     const continuing = g.lastActivityDate === yesterday;
     const nextStreak = continuing ? (g.streakDays || 0) + 1 : 1;
     const milestoneXP = nextStreak > 0 && nextStreak % STREAK_MILESTONE_INTERVAL === 0
       ? GROUP_XP_AWARDS.STREAK_MILESTONE
       : 0;
-    return {
+    const oldXP = g.groupXP || 0;
+    const newXP = oldXP + milestoneXP;
+    const oldLevel = getGroupLevelFromXP(oldXP).level;
+    const newLevel = getGroupLevelFromXP(newXP).level;
+    const now = Date.now();
+
+    let updated = {
       ...g,
       lastActivityDate: todayKey,
       streakDays: nextStreak,
-      groupXP: (g.groupXP || 0) + milestoneXP,
+      groupXP: newXP,
     };
+
+    if (milestoneXP > 0) {
+      updated = pushFeedEvent(updated, {
+        id: now + Math.random(),
+        type: FEED_EVENT_TYPES.STREAK_MILESTONE,
+        timestamp: now,
+        xpDelta: milestoneXP,
+        payload: { streakDays: nextStreak },
+      });
+    }
+    for (let lv = oldLevel + 1; lv <= newLevel; lv++) {
+      updated = pushFeedEvent(updated, {
+        id: now + 100 + lv + Math.random(),
+        type: FEED_EVENT_TYPES.LEVEL_UP,
+        timestamp: now + 1,
+        payload: { newLevel: lv },
+      });
+    }
+    return updated;
   });
 }
