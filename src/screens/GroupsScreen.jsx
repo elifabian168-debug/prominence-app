@@ -92,7 +92,7 @@ export default function GroupsScreen({
           <div style={{
             fontFamily: SERIF, fontSize: 14, color: TEXT_DIM, fontStyle: "italic",
           }}>
-            {groups.length} of {MAX_GROUPS_PER_USER} bonds
+            {groups.length === 0 ? "No bonds yet" : `${groups.length} sworn`}
           </div>
         </div>
 

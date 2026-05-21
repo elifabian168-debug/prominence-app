@@ -1,4 +1,4 @@
-import { Edit3, TrendingUp, Settings, Star, RotateCcw, Sun, Moon, Flame, Calendar, Sparkles, Trophy } from "lucide-react";
+import { Edit3, TrendingUp, Settings, RotateCcw, Sun, Moon, Flame, Calendar, Sparkles, Trophy } from "lucide-react";
 import { CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP, formatXP, toRoman } from "../utils/xp";
@@ -189,7 +189,7 @@ function LevelTimelineRow({ entry, archColor, isLast }) {
 
 // ── Main screen ─────────────────────────────────────────────────────────────
 
-export default function ProfileScreen({ name, bio, createdAt, state, onReset, onOpenLifeStats, onEditProfile, onOpenNotifications, onOpenPro, theme, onToggleTheme }) {
+export default function ProfileScreen({ name, bio, createdAt, state, onReset, onOpenLifeStats, onEditProfile, onOpenNotifications, theme, onToggleTheme }) {
   const archetype = ARCHETYPES[getArchetype(state.statXP)];
   const ArchI = archetype.icon;
   const archColor = archetype.color;
@@ -197,7 +197,6 @@ export default function ProfileScreen({ name, bio, createdAt, state, onReset, on
   const romanLevel = toRoman(level);
   const activeNotifs = Object.values(state.notifications || {}).filter(Boolean).length;
   const totalNotifs  = Object.keys(state.notifications || {}).length;
-  const isPro = !!state.isPro;
   const initial = (name || "?").charAt(0).toUpperCase();
 
   const milestones = deriveMilestones(state, createdAt);
@@ -500,7 +499,6 @@ export default function ProfileScreen({ name, bio, createdAt, state, onReset, on
           <SettingsRow icon={Edit3}      label="Edit Profile"    onClick={onEditProfile} />
           <SettingsRow icon={Settings}   label="Notifications"   note={`${activeNotifs} of ${totalNotifs}`} onClick={onOpenNotifications} />
           <SettingsRow icon={theme === "light" ? Moon : Sun} label={theme === "light" ? "Dark mode" : "Light mode"} onClick={onToggleTheme} />
-          <SettingsRow icon={Star}       label="Prominence Pro"  note={isPro ? "Active" : "Unlock everything"} pro={!isPro} onClick={onOpenPro} />
         </div>
       </div>
 

@@ -38,7 +38,6 @@ import SharedQuestCreateSheet from "./components/groups/SharedQuestCreateSheet";
 import EditProfileSheet from "./sheets/EditProfileSheet";
 import NotificationsSheet from "./sheets/NotificationsSheet";
 import NotificationCenterSheet from "./sheets/NotificationCenterSheet";
-import ProUpgradeSheet from "./sheets/ProUpgradeSheet";
 
 const FAIL_COLOR = "#F87171";
 
@@ -58,7 +57,7 @@ export default function Prominence() {
     saveEdit, markFailed, deleteTask,
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
     resetAll,
-    updateProfile, toggleNotification, upgradeToPro,
+    updateProfile, toggleNotification,
   } = useGameState({
     showToast,
     onLevelUp: (level) => {
@@ -88,7 +87,6 @@ export default function Prominence() {
   const [editProfileOpen, setEditProfileOpen]   = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifCenterOpen, setNotifCenterOpen]   = useState(false);
-  const [proSheetOpen, setProSheetOpen]         = useState(false);
   const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
 
   // ── Groups (Orders) state ─────────────────────────────────────────────────
@@ -370,7 +368,6 @@ export default function Prominence() {
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onEditProfile={() => setEditProfileOpen(true)}
                   onOpenNotifications={() => setNotificationsOpen(true)}
-                  onOpenPro={() => setProSheetOpen(true)}
                   theme={theme}
                   onToggleTheme={toggleTheme} />
               </div>
@@ -392,9 +389,6 @@ export default function Prominence() {
 
         <NotificationsSheet open={notificationsOpen} prefs={state.notifications || {}}
           onClose={() => setNotificationsOpen(false)} onToggle={toggleNotification} />
-
-        <ProUpgradeSheet open={proSheetOpen} isPro={!!state.isPro}
-          onClose={() => setProSheetOpen(false)} onUpgrade={upgradeToPro} />
 
         <NotificationCenterSheet open={notifCenterOpen}
           notifications={state.cheersReceived || []}

@@ -46,6 +46,5 @@ export const getInitialState = (firstQuest) => {
       levelUp:              true,
       weeklyQuestReminder:  true,
     },
-    isPro: false,
   };
 };

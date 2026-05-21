@@ -455,11 +455,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     }));
   };
 
-  const upgradeToPro = () => {
-    setState(prev => ({ ...prev, isPro: true }));
-    showToast("Welcome to Prominence Pro");
-  };
-
   return {
     user, setUser, state, setState,
     handleCreateTask, completeTask, completeMainQuest,
@@ -467,6 +462,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
     hasPendingWeeklyInCategory,
     resetAll,
-    updateProfile, toggleNotification, upgradeToPro,
+    updateProfile, toggleNotification,
   };
 }
