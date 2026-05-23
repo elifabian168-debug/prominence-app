@@ -15,7 +15,15 @@ const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
 export default function HomeScreen({ state, name, levelingUp, xpGains, completeTask, completeMainQuest, completeWeeklyQuest, onOpenActions, onOpenFriends, onOpenLifeStats, onOpenNotifs, onAddWeekly, onCreateQuest, groups = [], groupInvites = [], onOpenGroups, onOpenCircle }) {
   const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
   const { totalXP, tasks, mainQuest, streak } = state;
-  const pendingWeekly = (state.weeklyQuests || []).filter(q => q.status === "pending");
+  // Weekly quests stay on Home for their full 7-day window — completed ones
+  // remain visible (as a "Complete" card) until their deadline passes. Failed
+  // quests drop off immediately so the user can recreate in that category.
+  const activeWeekly = (state.weeklyQuests || []).filter(q => {
+    if (q.status === "pending") return true;
+    if (q.status === "complete" && (!q.deadline || Date.now() < q.deadline)) return true;
+    return false;
+  });
+  const pendingWeekly = activeWeekly.filter(q => q.status === "pending");
   const { level, progress, xpIntoLevel, xpForNextLevel } = getLevelFromXP(totalXP);
   const archetype = ARCHETYPES[getArchetype(state.statXP)];
   const ArchIcon = archetype.icon;
@@ -336,7 +344,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
           <div style={{ fontSize: 10, color: alpha(WEEKLY_ACCENT, "95"), letterSpacing: "0.22em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
             <Calendar size={11} color={WEEKLY_ACCENT} /> Weekly Quests
           </div>
-          {pendingWeekly.length > 0 ? (
+          {activeWeekly.length > 0 ? (
             <button onClick={onAddWeekly} aria-label="Add weekly quest" style={{
               display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 99,
               background: `${WEEKLY_ACCENT}15`, border: `1px solid ${WEEKLY_ACCENT}40`,
@@ -349,7 +357,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
             <span style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.08em", textTransform: "uppercase" }}>0 active</span>
           )}
         </div>
-        {pendingWeekly.length === 0 ? (
+        {activeWeekly.length === 0 ? (
           <button onClick={onAddWeekly} style={{
             width: "100%", display: "flex", alignItems: "center", gap: 12,
             padding: "14px 16px", borderRadius: 14,
@@ -374,7 +382,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
           </button>
         ) : (
           <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {pendingWeekly.map((q, i) => (
+            {activeWeekly.map((q, i) => (
               <div key={q.id} style={{ "--i": i }}>
                 <WeeklyQuestCard quest={q}
                   onComplete={() => completeWeeklyQuest(q.id)}

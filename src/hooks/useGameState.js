@@ -263,8 +263,16 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
   }, []);
 
   // ── Weekly quest mutations ──────────────────────────────────────────────
+  // A category is "taken" if there's an active weekly for it this week.
+  // Active = pending OR completed-but-still-within-its-7-day window. A failed
+  // weekly frees the category back up so the user can retry.
   const hasPendingWeeklyInCategory = (category) =>
-    (state.weeklyQuests || []).some(q => q.category === category && q.status === "pending");
+    (state.weeklyQuests || []).some(q => {
+      if (q.category !== category) return false;
+      if (q.status === "pending") return true;
+      if (q.status === "complete" && (!q.deadline || Date.now() < q.deadline)) return true;
+      return false;
+    });
 
   const createWeeklyQuest = (data) => {
     if (hasPendingWeeklyInCategory(data.category)) {

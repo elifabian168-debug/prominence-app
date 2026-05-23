@@ -190,8 +190,15 @@ export default function Prominence() {
     if (result?.kind === "weekly") setActiveTab("home");
   };
 
+  // A category is "taken" while a weekly quest for it is still active —
+  // pending OR completed-but-still-within-its-7-day window. Matches the
+  // creation guard in useGameState.hasPendingWeeklyInCategory.
   const weeklyCategoriesTaken = (state.weeklyQuests || [])
-    .filter(q => q.status === "pending")
+    .filter(q => {
+      if (q.status === "pending") return true;
+      if (q.status === "complete" && (!q.deadline || Date.now() < q.deadline)) return true;
+      return false;
+    })
     .map(q => q.category);
 
   const openCreateModal = (mode = "normal") => { setModalMode(mode); setModalOpen(true); };
