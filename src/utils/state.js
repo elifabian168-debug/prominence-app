@@ -4,8 +4,11 @@ import { SEED_GROUPS, SEED_GROUP_INVITES } from "../constants/groupsData";
 
 export const getInitialState = (firstQuest) => {
   const tasks = [];
+  let mainQuest = null;
+  const weeklyQuests = [];
+
   if (firstQuest) {
-    tasks.unshift({
+    const entry = {
       id: 100,
       title: firstQuest.title,
       category: firstQuest.category,
@@ -13,13 +16,24 @@ export const getInitialState = (firstQuest) => {
       duration: firstQuest.duration || "short",
       xp: firstQuest.xp,
       status: "pending",
-    });
+    };
+    if (firstQuest.isMainQuest) {
+      mainQuest = entry;
+    } else if (firstQuest.isWeeklyQuest) {
+      const createdAt = Date.now();
+      const d = new Date(createdAt);
+      d.setDate(d.getDate() + 7);
+      d.setHours(23, 59, 59, 999);
+      weeklyQuests.push({ ...entry, createdAt, deadline: d.getTime() });
+    } else {
+      tasks.unshift(entry);
+    }
   }
   return {
     totalXP: 0,
     tasks,
-    mainQuest: null,
-    weeklyQuests: [],
+    mainQuest,
+    weeklyQuests,
     lastWeeklyReminderDate: null,
     streak: 0,
     longestStreak: 0,
