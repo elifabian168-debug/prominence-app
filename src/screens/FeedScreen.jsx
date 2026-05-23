@@ -38,6 +38,40 @@ const goalVerb = (kind) => {
 // Witness feed: reverse-chronological list of posts the user can see.
 // Each post is one friend (or you) completing a goal. Cheers are one-tap;
 // comments land in step 5.
+// Build a short "shared with" line for a post.
+//
+// - shared-mode Circle: show the Circle name (e.g. "Shared in Run Crew")
+// - private-mode Circle: show co-recipient avatars / count, no name
+// - no Circle attached (audienceCircleIds empty): "Shared with friends"
+function describeAudience(post, circles, allFriends, currentUserId) {
+  const circleIds = post.audienceCircleIds || [];
+  if (circleIds.length === 0) {
+    return { kind: "friends", label: "Shared with friends", avatars: [] };
+  }
+  // Use the first attached Circle as the source of mode/name (multi-Circle
+  // posts aren't reachable through the current picker but the model supports it).
+  const circle = circles.find((c) => c.id === circleIds[0]);
+  if (!circle) {
+    return { kind: "friends", label: "Shared with friends", avatars: [] };
+  }
+  if (post.audienceMode === "shared" || circle.audienceMode === "shared") {
+    return { kind: "shared", label: `Shared in ${circle.name}`, circle, avatars: [] };
+  }
+  // Private label: list co-recipients (members except the viewer + the author).
+  const coRecipients = (circle.memberIds || [])
+    .filter((id) => id !== currentUserId && id !== post.authorId)
+    .map((id) => allFriends.find((f) => f.id === id))
+    .filter(Boolean)
+    .slice(0, 4);
+  return {
+    kind: "private",
+    label: coRecipients.length > 0
+      ? `Shared with ${coRecipients.map((f) => f.name.split(" ")[0]).join(", ")}`
+      : "Shared privately",
+    avatars: coRecipients,
+  };
+}
+
 export default function FeedScreen({
   state,
   userName = "You",
@@ -181,6 +215,7 @@ export default function FeedScreen({
               post={p}
               author={resolveAuthor(state, userName, p.authorId)}
               resolveCommenter={(id) => resolveAuthor(state, userName, id)}
+              audience={describeAudience(p, circles, state.friends || [], "me")}
               onCheer={onCheer}
               onUncheer={onUncheer}
               onAddComment={onAddComment}
@@ -193,7 +228,7 @@ export default function FeedScreen({
   );
 }
 
-function PostCard({ post, author, resolveCommenter, onCheer, onUncheer, onAddComment, onDeleteComment }) {
+function PostCard({ post, author, resolveCommenter, audience, onCheer, onUncheer, onAddComment, onDeleteComment }) {
   const arch = ARCHETYPES[author.archetype] || ARCHETYPES.balanced;
   const cat = CATEGORIES[post.goalRef?.category] || null;
   const youCheered = (post.cheers || []).some((c) => c.userId === "me");
@@ -279,6 +314,41 @@ function PostCard({ post, author, resolveCommenter, onCheer, onUncheer, onAddCom
           fontSize: 13, color: TEXT_MID, lineHeight: 1.45, marginBottom: 10,
         }}>
           {post.body}
+        </div>
+      )}
+
+      {/* Audience chip */}
+      {audience && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          fontSize: 10, color: TEXT_DIM,
+          letterSpacing: "0.06em",
+          marginBottom: 8,
+        }}>
+          {audience.avatars.length > 0 && (
+            <div style={{ display: "flex", marginRight: 2 }}>
+              {audience.avatars.map((f, i) => {
+                const a = ARCHETYPES[f.archetype] || ARCHETYPES.balanced;
+                return (
+                  <div
+                    key={f.id}
+                    style={{
+                      width: 16, height: 16, borderRadius: "50%",
+                      marginLeft: i === 0 ? 0 : -5,
+                      background: `linear-gradient(135deg, ${alpha(a.color, "70")}, ${alpha(a.color, "25")})`,
+                      border: `1.5px solid ${CARD}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ fontFamily: SERIF, fontSize: 8, color: "#FFF", fontWeight: 600 }}>
+                      {f.initial}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <span>{audience.label}</span>
         </div>
       )}
 

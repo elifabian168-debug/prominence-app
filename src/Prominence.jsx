@@ -361,6 +361,7 @@ export default function Prominence() {
         <TaskCreateModal open={modalOpen} onClose={() => setModalOpen(false)}
           onCreate={onCreateTask} streak={state.streak}
           weeklyCategoriesTaken={weeklyCategoriesTaken}
+          circles={groups}
           defaultMode={modalMode} />
 
         <EditProfileSheet open={editProfileOpen} name={user.name} bio={user.bio || ""}

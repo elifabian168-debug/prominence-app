@@ -10,6 +10,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
   const [name, setName] = useState("");
   const [motto, setMotto] = useState("");
   const [themeKey, setThemeKey] = useState("solar");
+  const [audienceMode, setAudienceMode] = useState("private");
   const nameRef = useRef(null);
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 280); }, []);
@@ -116,6 +117,59 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
           />
         </Field>
 
+        {/* Visibility toggle — locked at creation */}
+        <div style={{ marginBottom: 22 }}>
+          <div style={{
+            fontSize: 9, color: TEXT_DIM,
+            letterSpacing: "0.3em", textTransform: "uppercase",
+            fontWeight: 700, marginBottom: 8,
+          }}>
+            Show name to members?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { id: "private", label: "Private name", hint: "Members see avatars only" },
+              { id: "shared",  label: "Shared name",  hint: "Everyone sees the Circle name" },
+            ].map((opt) => {
+              const active = audienceMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setAudienceMode(opt.id)}
+                  className="tappable"
+                  style={{
+                    flex: 1, padding: "10px 12px",
+                    background: active ? alpha(theme.color, "16") : "transparent",
+                    border: `1px solid ${active ? theme.color : BORDER}`,
+                    borderRadius: 10,
+                    cursor: "pointer", textAlign: "left",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{
+                    fontSize: 11, color: active ? theme.color : TEXT, fontWeight: 600,
+                    letterSpacing: "0.04em", marginBottom: 3,
+                  }}>
+                    {opt.label}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: active ? alpha(theme.color, "B0") : TEXT_DIM,
+                    fontStyle: "italic",
+                  }}>
+                    {opt.hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{
+            fontSize: 10, color: TEXT_DIM, fontStyle: "italic",
+            marginTop: 6, lineHeight: 1.4,
+          }}>
+            Can't change this later — switching would leak the label.
+          </div>
+        </div>
+
         {/* Theme picker */}
         <div style={{ marginBottom: 28 }}>
           <div style={{
@@ -164,7 +218,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
 
         {/* Submit */}
         <button
-          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), motto: motto.trim(), themeColor: themeKey })}
+          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), motto: motto.trim(), themeColor: themeKey, audienceMode })}
           disabled={!canSubmit}
           style={{
             width: "100%", padding: "16px",

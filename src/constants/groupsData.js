@@ -106,6 +106,7 @@ export const SEED_GROUPS = [
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12, // 12 days ago
     memberIds: ["me", "f2", "f1"],
     pendingInvites: [],
+    audienceMode: "shared",
     groupXP: 350,
     streakDays: 5,
     lastActivityDate: (() => {
@@ -125,6 +126,7 @@ export const SEED_GROUP_INVITES = [
     groupName: "The Quiet Hand",
     motto: "Stillness, sharpened.",
     themeColor: "onyx",
+    audienceMode: "shared",
     crestSeed: "quiet-hand-2026",
     fromName: "Marcus",
     fromId: "f3",

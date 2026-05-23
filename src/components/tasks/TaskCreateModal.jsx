@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { X, Crown, Calendar } from "lucide-react";
+import { X, Crown, Calendar, Lock, Users } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../../constants/theme";
 import { CATEGORIES } from "../../constants/categories";
 import { EFFORT_LEVELS, DURATION_LEVELS, WEEKLY_DURATION_LEVELS } from "../../constants/questData";
@@ -9,19 +9,25 @@ import Section from "../ui/Section";
 
 const WEEKLY_ACCENT = "#7CA9F2";
 
-export default function TaskCreateModal({ open, onClose, onCreate, streak = 0, weeklyCategoriesTaken = [], defaultMode = "normal" }) {
+// Audience picker state shape:
+//   { mode: "all" }        — visible to all friends (no Circle scope)
+//   { mode: "private" }    — completion is private; no post is created
+//   { mode: "circle", circleId } — scoped to one Circle
+export default function TaskCreateModal({ open, onClose, onCreate, streak = 0, weeklyCategoriesTaken = [], defaultMode = "normal", circles = [] }) {
   const [title, setTitle]       = useState("");
   const [category, setCategory] = useState("fitness");
   const [effort, setEffort]     = useState("medium");
   const [duration, setDuration] = useState("short");
   const [isMQ, setMQ]           = useState(false);
   const [isWQ, setWQ]           = useState(false);
+  const [audience, setAudience] = useState({ mode: "all" });
 
   // Reset state and apply mode-specific defaults each time the modal opens
   useEffect(() => {
     if (!open) return;
     setTitle("");
     setMQ(false);
+    setAudience({ mode: "all" });
     if (defaultMode === "weekly") {
       setWQ(true);
       setEffort("high");
@@ -47,8 +53,13 @@ export default function TaskCreateModal({ open, onClose, onCreate, streak = 0, w
 
   const submit = () => {
     if (!canSubmit) return;
-    onCreate({ title: title.trim(), category, effort, duration, xp, isMainQuest: isMQ, isWeeklyQuest: isWQ });
+    const audiencePayload = {
+      audienceMode: audience.mode === "private" ? "private" : "post",
+      audienceCircleIds: audience.mode === "circle" ? [audience.circleId] : [],
+    };
+    onCreate({ title: title.trim(), category, effort, duration, xp, isMainQuest: isMQ, isWeeklyQuest: isWQ, ...audiencePayload });
     setTitle(""); setEffort("medium"); setDuration("short"); setMQ(false); setWQ(false);
+    setAudience({ mode: "all" });
     onClose();
   };
 
@@ -154,6 +165,46 @@ export default function TaskCreateModal({ open, onClose, onCreate, streak = 0, w
               </button>
             );
           })}
+        </div>
+      </Section>
+
+      <Section label="Visible to">
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+          {[
+            { key: "all", label: "All friends", icon: Users },
+            ...circles.map((c) => ({ key: `c:${c.id}`, label: c.name, circle: c })),
+            { key: "private", label: "Private", icon: Lock },
+          ].map((opt) => {
+            const active =
+              (opt.key === "all" && audience.mode === "all") ||
+              (opt.key === "private" && audience.mode === "private") ||
+              (opt.circle && audience.mode === "circle" && audience.circleId === opt.circle.id);
+            const onPick = () => {
+              if (opt.key === "all") setAudience({ mode: "all" });
+              else if (opt.key === "private") setAudience({ mode: "private" });
+              else setAudience({ mode: "circle", circleId: opt.circle.id });
+            };
+            const I = opt.icon;
+            return (
+              <button key={opt.key} onClick={onPick} className="tappable" style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 14px", borderRadius: 99, whiteSpace: "nowrap",
+                background: active ? alpha(ACCENT, "15") : CARD,
+                border: `1px solid ${active ? ACCENT : BORDER}`,
+                color: active ? ACCENT : TEXT_MID, fontSize: 13, cursor: "pointer",
+              }}>
+                {I && <I size={13} />}
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 8, lineHeight: 1.4 }}>
+          {audience.mode === "private"
+            ? "Stays off your feed. No streak credit."
+            : audience.mode === "circle"
+              ? "Only this Circle will see the post."
+              : "Goes to your full feed when you finish it."}
         </div>
       </Section>
 

@@ -61,9 +61,12 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (!parsed.groups) parsed.groups = SEED_GROUPS;
         if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
         if (!parsed.posts) parsed.posts = SEED_POSTS;
-        // Backfill group XP + activity-feed fields for older saved groups
+        // Backfill group XP + activity-feed fields for older saved groups.
+        // audienceMode defaults to 'private' for pre-existing Circles since
+        // they were created before the toggle existed.
         parsed.groups = (parsed.groups || []).map((g) => ({
           ...g,
+          audienceMode: g.audienceMode ?? "private",
           groupXP: g.groupXP ?? 0,
           streakDays: g.streakDays ?? 0,
           lastActivityDate: g.lastActivityDate ?? null,
@@ -133,26 +136,37 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
   // Friend simulators (random activity ticks + inbound cheers/nudges) live in
   // useFriends now — that hook owns the social state and its mock generators.
 
-  // Build a Post for a just-completed goal. Audience defaults to [] which
-  // means "visible to all friends" — the per-Circle audience picker lands
-  // in a later cutover step.
-  const buildPost = (kind, task) => ({
-    id: `p_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    authorId: "me",
-    goalRef: {
-      kind,
-      id: task.id,
-      title: task.title,
-      category: task.category,
-      xp: task.xp,
-    },
-    body: "",
-    audienceCircleIds: [],
-    audienceMode: "private",
-    createdAt: Date.now(),
-    cheers: [],
-    comments: [],
-  });
+  // Build a Post for a just-completed goal, honoring the task's audience.
+  // Returns null when the task was marked private (no post created).
+  // The post's audienceMode mirrors the source Circle's mode (or "private"
+  // for an unscoped "all friends" post).
+  const buildPost = (kind, task, circles) => {
+    if (task?.audienceMode === "private") return null;
+    const circleIds = task?.audienceCircleIds || [];
+    const firstCircle = circleIds.length
+      ? (circles || []).find((c) => c.id === circleIds[0])
+      : null;
+    return {
+      id: `p_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      authorId: "me",
+      goalRef: {
+        kind,
+        id: task.id,
+        title: task.title,
+        category: task.category,
+        xp: task.xp,
+      },
+      body: "",
+      audienceCircleIds: circleIds,
+      audienceMode: firstCircle?.audienceMode || "private",
+      createdAt: Date.now(),
+      cheers: [],
+      comments: [],
+    };
+  };
+
+  // Helper: prepend a post if buildPost returned one.
+  const appendPost = (posts, post) => (post ? [post, ...(posts || [])] : (posts || []));
 
   // Pure reducer: applies an XP award to the given prev state and returns the next state.
   // Reads cap/total from prev (not closure) so it's safe under rapid completions.
@@ -293,6 +307,8 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       status: "pending",
       createdAt,
       deadline: d.getTime(),
+      audienceMode: data.audienceMode === "private" ? "private" : "post",
+      audienceCircleIds: data.audienceCircleIds || [],
     };
     setState(prev => ({ ...prev, weeklyQuests: [...(prev.weeklyQuests || []), newQuest] }));
     showToast(`Weekly quest added · +${data.xp} XP on completion`);
@@ -308,7 +324,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       const afterMark = {
         ...prev,
         weeklyQuests: prev.weeklyQuests.map(q => q.id === questId ? { ...q, status: "complete", completedAt } : q),
-        posts: [buildPost("weekly", quest), ...(prev.posts || [])],
+        posts: appendPost(prev.posts, buildPost("weekly", quest, prev.groups)),
       };
       return awardXPReducer(afterMark, quest.xp, quest.category, quest.title, true, questId, effects);
     });
@@ -346,6 +362,8 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       duration: data.duration,
       xp: data.xp,
       status: "pending",
+      audienceMode: data.audienceMode === "private" ? "private" : "post",
+      audienceCircleIds: data.audienceCircleIds || [],
     };
     if (data.isMainQuest) {
       setState(prev => ({ ...prev, mainQuest: newTask }));
@@ -365,7 +383,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       const afterMark = {
         ...prev,
         tasks: prev.tasks.map(t => t.id === taskId ? { ...t, status: "complete", completedAt } : t),
-        posts: [buildPost("task", task), ...(prev.posts || [])],
+        posts: appendPost(prev.posts, buildPost("task", task, prev.groups)),
       };
       return awardXPReducer(afterMark, task.xp, task.category, task.title, false, taskId, effects);
     });
@@ -381,7 +399,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       const afterMark = {
         ...prev,
         mainQuest: { ...mq, status: "complete", completedAt },
-        posts: [buildPost("main", mq), ...(prev.posts || [])],
+        posts: appendPost(prev.posts, buildPost("main", mq, prev.groups)),
       };
       return awardXPReducer(afterMark, mq.xp, mq.category, mq.title, false, mq.id, effects);
     });

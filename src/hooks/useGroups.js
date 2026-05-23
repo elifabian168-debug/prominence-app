@@ -16,8 +16,12 @@ export function useGroups(state, setState) {
   );
 
   // ── Create a new Circle (user becomes founder + first member)
+  // audienceMode is locked at creation:
+  //   'private' (default) — Circle name is creator-only. Members see only
+  //     co-recipient avatars on posts shared to this Circle.
+  //   'shared' — Circle name is visible to all members.
   const createGroup = useCallback(
-    ({ name, motto, themeColor }) => {
+    ({ name, motto, themeColor, audienceMode }) => {
       if (!name?.trim()) return null;
       const id = `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const crestSeed = `${name.trim().toLowerCase().replace(/\s+/g, "-")}-${id}`;
@@ -27,6 +31,7 @@ export function useGroups(state, setState) {
         name: name.trim(),
         motto: motto?.trim() || "",
         themeColor: themeColor || "solar",
+        audienceMode: audienceMode === "shared" ? "shared" : "private",
         crestSeed,
         founderId: "me",
         createdAt: now,
@@ -100,6 +105,7 @@ export function useGroups(state, setState) {
         name: invite.groupName,
         motto: invite.motto || "",
         themeColor: invite.themeColor || "solar",
+        audienceMode: invite.audienceMode === "shared" ? "shared" : "private",
         crestSeed: invite.crestSeed || invite.groupId,
         founderId: invite.fromId,
         createdAt: invite.invitedAt,
