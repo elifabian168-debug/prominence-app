@@ -61,6 +61,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (!parsed.groups) parsed.groups = SEED_GROUPS;
         if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
         if (!parsed.posts) parsed.posts = SEED_POSTS;
+        if (parsed.lastStreakDay === undefined) parsed.lastStreakDay = null;
         // Backfill group XP + activity-feed fields for older saved groups.
         // audienceMode defaults to 'private' for pre-existing Circles since
         // they were created before the toggle existed.
@@ -168,6 +169,34 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
   // Helper: prepend a post if buildPost returned one.
   const appendPost = (posts, post) => (post ? [post, ...(posts || [])] : (posts || []));
 
+  // Streak is a *social* signal: it only moves when the user actually posts
+  // a completion (i.e. the completion wasn't marked private). Returns the
+  // streak deltas to merge into the next state, or null if nothing changes.
+  //
+  // Rules:
+  //   - Already posted today  → no change
+  //   - Last posted yesterday → streak + 1
+  //   - Otherwise (or never)  → streak resets to 1
+  //   - Private completion    → caller passes posted=false → no change
+  const computeStreakDelta = (prev, posted) => {
+    if (!posted) return null;
+    const today = todayKey();
+    const last = prev.lastStreakDay;
+    if (last === today) return null;
+    const yesterday = (() => {
+      const d = new Date(`${today}T00:00:00`);
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const continuing = last === yesterday;
+    const nextStreak = continuing ? (prev.streak || 0) + 1 : 1;
+    return {
+      streak: nextStreak,
+      longestStreak: Math.max(prev.longestStreak || 0, nextStreak),
+      lastStreakDay: today,
+    };
+  };
+
   // Pure reducer: applies an XP award to the given prev state and returns the next state.
   // Reads cap/total from prev (not closure) so it's safe under rapid completions.
   // Side effects (toast, level-up, gain animation) are queued via the `effects` accumulator
@@ -208,8 +237,9 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         ? prev.categoryXPToday
         : { ...prev.categoryXPToday, [category]: (prev.categoryXPToday[category] || 0) + actualXP },
       completedHistory: { ...prev.completedHistory, completed: prev.completedHistory.completed + 1 },
-      streak: prev.streak === 0 ? 1 : prev.streak,
-      longestStreak: Math.max(prev.longestStreak, prev.streak === 0 ? 1 : prev.streak),
+      // Streak is no longer tied to XP awards — it now lives on the post
+      // creation path (see computeStreakDelta). XP-only completions
+      // (private goals) don't move the streak.
       levelHistory: newLevelEntries.length ? [...prevHistory, ...newLevelEntries] : prevHistory,
       activityLog: {
         ...prev.activityLog,
@@ -321,10 +351,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     setState(prev => {
       const quest = (prev.weeklyQuests || []).find(q => q.id === questId);
       if (!quest || quest.status !== "pending") return prev;
+      const post = buildPost("weekly", quest, prev.groups);
+      const streakDelta = computeStreakDelta(prev, !!post);
       const afterMark = {
         ...prev,
+        ...(streakDelta || {}),
         weeklyQuests: prev.weeklyQuests.map(q => q.id === questId ? { ...q, status: "complete", completedAt } : q),
-        posts: appendPost(prev.posts, buildPost("weekly", quest, prev.groups)),
+        posts: appendPost(prev.posts, post),
       };
       return awardXPReducer(afterMark, quest.xp, quest.category, quest.title, true, questId, effects);
     });
@@ -380,10 +413,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     setState(prev => {
       const task = prev.tasks.find(t => t.id === taskId);
       if (!task || task.status !== "pending") return prev;
+      const post = buildPost("task", task, prev.groups);
+      const streakDelta = computeStreakDelta(prev, !!post);
       const afterMark = {
         ...prev,
+        ...(streakDelta || {}),
         tasks: prev.tasks.map(t => t.id === taskId ? { ...t, status: "complete", completedAt } : t),
-        posts: appendPost(prev.posts, buildPost("task", task, prev.groups)),
+        posts: appendPost(prev.posts, post),
       };
       return awardXPReducer(afterMark, task.xp, task.category, task.title, false, taskId, effects);
     });
@@ -396,10 +432,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     setState(prev => {
       const mq = prev.mainQuest;
       if (!mq || mq.status !== "pending") return prev;
+      const post = buildPost("main", mq, prev.groups);
+      const streakDelta = computeStreakDelta(prev, !!post);
       const afterMark = {
         ...prev,
+        ...(streakDelta || {}),
         mainQuest: { ...mq, status: "complete", completedAt },
-        posts: appendPost(prev.posts, buildPost("main", mq, prev.groups)),
+        posts: appendPost(prev.posts, post),
       };
       return awardXPReducer(afterMark, mq.xp, mq.category, mq.title, false, mq.id, effects);
     });

@@ -37,6 +37,7 @@ export const getInitialState = (firstQuest) => {
     lastWeeklyReminderDate: null,
     streak: 0,
     longestStreak: 0,
+    lastStreakDay: null,
     levelHistory: [{ level: 1, achievedAt: Date.now() }],
     completedHistory: { completed: 0, failed: 0 },
     statXP: { strength: 0, intellect: 0, discipline: 0, vitality: 0, craft: 0 },
