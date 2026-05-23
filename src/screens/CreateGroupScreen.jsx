@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ArrowRight } from "lucide-react";
-import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ACCENT, BG, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { GROUP_THEMES, GROUP_THEME_KEYS } from "../constants/groupsData";
 import GroupCrest from "../components/groups/GroupCrest";
 
@@ -36,7 +36,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             display: "flex", alignItems: "center", gap: 4,
             cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 500,
           }}>
-            <ChevronLeft size={18} /> Orders
+            <ChevronLeft size={18} /> Circles
           </button>
         </div>
 
@@ -50,13 +50,13 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             letterSpacing: "0.4em", textTransform: "uppercase", fontWeight: 700,
             marginBottom: 8,
           }}>
-            Found an Order
+            New Circle
           </div>
           <div style={{
             fontFamily: SERIF, fontSize: 36, fontWeight: 500,
             color: TEXT, letterSpacing: "0.02em", lineHeight: 1.1,
           }}>
-            Forge a new bond.
+            Bring people together.
           </div>
         </div>
 
@@ -85,13 +85,13 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             textShadow: `0 0 18px ${alpha(theme.color, "30")}`,
             transition: "color 0.3s ease",
           }}>
-            {name.trim() || <span style={{ color: TEXT_DIM, fontStyle: "italic" }}>Your Order's Name</span>}
+            {name.trim() || <span style={{ color: TEXT_DIM, fontStyle: "italic" }}>Your Circle's name</span>}
           </div>
           <div style={{
             fontFamily: SERIF, fontSize: 13, color: TEXT_MID,
             fontStyle: "italic", minHeight: 18,
           }}>
-            {motto.trim() || (name.trim() ? "Choose a motto." : "")}
+            {motto.trim() || (name.trim() ? "Add a tagline." : "")}
           </div>
         </div>
 
@@ -107,11 +107,11 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
         </Field>
 
         {/* Motto input */}
-        <Field label="Motto">
+        <Field label="Tagline">
           <input
             value={motto}
             onChange={(e) => setMotto(e.target.value.slice(0, 48))}
-            placeholder="Bound by fire."
+            placeholder="Roommates · Run crew · Book club"
             style={inputStyle(motto.trim().length > 0)}
           />
         </Field>
@@ -182,7 +182,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             transition: "all 0.25s ease",
           }}
         >
-          Found the Order
+          Create Circle
           {canSubmit && <ArrowRight size={14} />}
         </button>
       </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, Trash2, Check, RotateCcw } from "lucide-react";
 
-import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_MID } from "./constants/theme";
+import { ACCENT, BG, CARD, BORDER_BR, TEXT, TEXT_MID } from "./constants/theme";
 
 import { useToast } from "./hooks/useToast";
 import { useUndoAction } from "./hooks/useUndoAction";
@@ -31,9 +31,7 @@ import AddFriendsScreen from "./screens/AddFriendsScreen";
 import GroupsScreen from "./screens/GroupsScreen";
 import GroupDetailScreen from "./screens/GroupDetailScreen";
 import CreateGroupScreen from "./screens/CreateGroupScreen";
-import SealedScroll from "./components/groups/SealedScroll";
 import InviteFriendSheet from "./components/groups/InviteFriendSheet";
-import SharedQuestCreateSheet from "./components/groups/SharedQuestCreateSheet";
 
 import EditProfileSheet from "./sheets/EditProfileSheet";
 import NotificationsSheet from "./sheets/NotificationsSheet";
@@ -89,20 +87,17 @@ export default function Prominence() {
   const [notifCenterOpen, setNotifCenterOpen]   = useState(false);
   const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
 
-  // ── Groups (Orders) state ─────────────────────────────────────────────────
+  // ── Circles state ─────────────────────────────────────────────────────────
   const [showGroups, setShowGroups]                 = useState(false);
-  const [groupDetail, setGroupDetail]               = useState(null);          // group object currently open
+  const [groupDetail, setGroupDetail]               = useState(null);          // Circle object currently open
   const [creatingGroup, setCreatingGroup]           = useState(false);
   const [respondingToInvite, setRespondingToInvite] = useState(null);          // invite object
-  const [invitingForGroup, setInvitingForGroup]     = useState(null);          // group when picking friend
-  const [sendingInvite, setSendingInvite]           = useState(null);          // { group, friend } when previewing scroll
-  const [forgingQuestFor, setForgingQuestFor]       = useState(null);          // group for SharedQuestCreateSheet
+  const [invitingForGroup, setInvitingForGroup]     = useState(null);          // Circle when picking friend
 
   const {
-    groups, groupInvites, canCreateMore,
+    groups, groupInvites,
     createGroup, inviteFriend, cancelInvite,
     acceptInvite, declineInvite, leaveGroup,
-    createSharedQuest, markContributed,
   } = useGroups(state, setState);
 
   const {
@@ -216,31 +211,13 @@ export default function Prominence() {
     if (joined) {
       setGroupDetail(joined);
       showToast(`Joined ${invite.groupName}`);
-    } else {
-      // Cap hit — invite was still consumed but no group added.
-      setShowGroups(true);
-      showToast("Maximum orders reached", TEXT_MID);
     }
   };
 
   const handleDeclineInvite = (invite) => {
     declineInvite(invite.groupId);
     setRespondingToInvite(null);
-    showToast("Summons declined");
-  };
-
-  const handleSendInvite = () => {
-    if (!sendingInvite) return;
-    inviteFriend(sendingInvite.group.id, sendingInvite.friend.id);
-    showToast(`Summoned ${sendingInvite.friend.name}`);
-    setSendingInvite(null);
-  };
-
-  const handleForgeSharedQuest = (payload) => {
-    if (!forgingQuestFor) return;
-    createSharedQuest(forgingQuestFor.id, payload);
-    setForgingQuestFor(null);
-    showToast("Shared quest forged");
+    showToast("Invite declined");
   };
 
   const refreshedGroupDetail = groupDetail ? groups.find((g) => g.id === groupDetail.id) : null;
@@ -294,10 +271,8 @@ export default function Prominence() {
               userWeeklyXP={userWeeklyXP}
               onBack={() => setGroupDetail(null)}
               onInvite={() => setInvitingForGroup(refreshedGroupDetail)}
-              onCancelInvite={(gid, fid) => { cancelInvite(gid, fid); showToast("Summons recalled"); }}
-              onCreateSharedQuest={(g) => setForgingQuestFor(g)}
-              onContributeShared={(gid, qid) => markContributed(gid, qid)}
-              onLeaveGroup={(gid) => { leaveGroup(gid); setGroupDetail(null); showToast("Left the order"); }}
+              onCancelInvite={(gid, fid) => { cancelInvite(gid, fid); showToast("Invite cancelled"); }}
+              onLeaveGroup={(gid) => { leaveGroup(gid); setGroupDetail(null); showToast("Left the Circle"); }}
             />
           </div>
         ) : showGroups ? (
@@ -306,7 +281,6 @@ export default function Prominence() {
               groups={groups}
               groupInvites={groupInvites}
               friends={state.friends || []}
-              canCreateMore={canCreateMore}
               userArchetype={userArchetype}
               userWeeklyXP={userWeeklyXP}
               onOpenGroup={(g) => setGroupDetail(g)}
@@ -342,7 +316,7 @@ export default function Prominence() {
                   groups={groups}
                   groupInvites={groupInvites}
                   onOpenGroups={() => setShowGroups(true)}
-                  onOpenOrder={(g) => setGroupDetail(g)} />
+                  onOpenCircle={(g) => setGroupDetail(g)} />
               </div>
             )}
             {activeTab === "stats" && (
@@ -401,30 +375,17 @@ export default function Prominence() {
           onClose={closeActions} onEdit={handleEdit}
           onFail={handleFailRequest} onDelete={handleDeleteRequest} />
 
-        {/* ── Groups (Orders) overlays ── */}
+        {/* ── Circles invite confirmation ── */}
         {respondingToInvite && (
-          <SealedScroll
-            mode="receive"
-            groupName={respondingToInvite.groupName}
-            motto={respondingToInvite.motto}
-            themeColor={respondingToInvite.themeColor}
-            crestSeed={respondingToInvite.crestSeed}
-            fromName={respondingToInvite.fromName}
-            onAccept={() => handleAcceptInvite(respondingToInvite)}
-            onDecline={() => handleDeclineInvite(respondingToInvite)}
-          />
-        )}
-
-        {sendingInvite && (
-          <SealedScroll
-            mode="send"
-            groupName={sendingInvite.group.name}
-            motto={sendingInvite.group.motto}
-            themeColor={sendingInvite.group.themeColor}
-            crestSeed={sendingInvite.group.crestSeed}
-            toName={sendingInvite.friend.name}
-            onSend={handleSendInvite}
-            onCancel={() => setSendingInvite(null)}
+          <ConfirmDialog
+            title={`Join ${respondingToInvite.groupName}?`}
+            message={respondingToInvite.motto
+              ? `"${respondingToInvite.motto}" — invited by ${respondingToInvite.fromName}.`
+              : `Invited by ${respondingToInvite.fromName}.`}
+            confirmLabel="Join"
+            confirmColor={ACCENT}
+            onConfirm={() => handleAcceptInvite(respondingToInvite)}
+            onCancel={() => handleDeclineInvite(respondingToInvite)}
           />
         )}
 
@@ -435,24 +396,11 @@ export default function Prominence() {
           onClose={() => setInvitingForGroup(null)}
           onPick={(friend) => {
             const group = invitingForGroup;
+            inviteFriend(group.id, friend.id);
             setInvitingForGroup(null);
-            setTimeout(() => setSendingInvite({ group, friend }), 80);
+            showToast(`Invited ${friend.name}`);
           }}
         />
-
-        {forgingQuestFor && (
-          <SharedQuestCreateSheet
-            open
-            group={forgingQuestFor}
-            members={forgingQuestFor.memberIds.map((id) => {
-              if (id === "me") return { id: "me", name: user.name, initial: user.name[0]?.toUpperCase() || "Y", archetype: userArchetype, isMe: true };
-              const f = (state.friends || []).find((x) => x.id === id);
-              return f || { id, name: "Unknown", initial: "?", archetype: "balanced" };
-            })}
-            onClose={() => setForgingQuestFor(null)}
-            onForge={handleForgeSharedQuest}
-          />
-        )}
 
         {editTask && (
           <TaskEditModal task={editTask.task}

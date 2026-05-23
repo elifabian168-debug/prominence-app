@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, Plus, Mail } from "lucide-react";
-import { ACCENT, BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
-import { GROUP_THEMES, MAX_GROUPS_PER_USER, getGroupLevelFromXP } from "../constants/groupsData";
-import GroupCrest from "../components/groups/GroupCrest";
+import { ChevronLeft, Plus } from "lucide-react";
+import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { GROUP_THEMES, getGroupLevelFromXP } from "../constants/groupsData";
 
 const formatRelativeShort = (ts) => {
   if (!ts) return "";
@@ -15,20 +14,31 @@ const formatRelativeShort = (ts) => {
   return `${Math.floor(days / 7)}w ago`;
 };
 
-// Resolve the member archetypes for crest dots.
-const memberArchetypesOf = (group, friends, userArchetype) =>
-  group.memberIds.map((id) => {
-    if (id === "me") return userArchetype || "balanced";
-    return friends.find((x) => x.id === id)?.archetype || "balanced";
-  });
+// Simple letter-tile preview for a Circle row.
+function CircleTile({ name, themeColor, size = 48 }) {
+  const theme = GROUP_THEMES[themeColor] || GROUP_THEMES.solar;
+  const letter = (name || "C").trim()[0]?.toUpperCase() || "C";
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 12, flexShrink: 0,
+      background: `linear-gradient(135deg, ${alpha(theme.color, "70")}, ${alpha(theme.color, "20")})`,
+      border: `1px solid ${alpha(theme.color, "55")}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: `0 0 16px ${alpha(theme.color, "20")}`,
+    }}>
+      <span style={{
+        fontFamily: SERIF, fontSize: Math.round(size * 0.42), fontWeight: 600,
+        color: "#FFF", textShadow: `0 1px 2px ${alpha("#000", "50")}`,
+      }}>
+        {letter}
+      </span>
+    </div>
+  );
+}
 
 export default function GroupsScreen({
   groups = [],
   groupInvites = [],
-  friends = [],
-  canCreateMore = true,
-  userArchetype = "balanced",
-  userWeeklyXP = 0,
   onOpenGroup,
   onOpenCreate,
   onOpenInvite,
@@ -80,26 +90,26 @@ export default function GroupsScreen({
             letterSpacing: "0.4em", textTransform: "uppercase", fontWeight: 700,
             marginBottom: 8,
           }}>
-            Sworn together
+            Your people
           </div>
           <div style={{
             fontFamily: SERIF, fontSize: 44, fontWeight: 500,
             color: TEXT, letterSpacing: "0.02em", lineHeight: 1,
             marginBottom: 6,
           }}>
-            The Orders
+            Circles
           </div>
           <div style={{
             fontFamily: SERIF, fontSize: 14, color: TEXT_DIM, fontStyle: "italic",
           }}>
-            {groups.length === 0 ? "No bonds yet" : `${groups.length} sworn`}
+            {groups.length === 0 ? "No Circles yet" : `${groups.length} ${groups.length === 1 ? "Circle" : "Circles"}`}
           </div>
         </div>
 
         {/* Pending invites section */}
         {groupInvites.length > 0 && (
           <div style={{ marginBottom: 32 }}>
-            <SectionHeader label="Summons received" count={groupInvites.length} />
+            <SectionHeader label="Invites" count={groupInvites.length} />
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {groupInvites.map((invite, i) => {
                 const theme = GROUP_THEMES[invite.themeColor] || GROUP_THEMES.solar;
@@ -116,18 +126,16 @@ export default function GroupsScreen({
                       borderRadius: 14,
                       cursor: "pointer", textAlign: "left",
                       animation: `fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) ${i * 80}ms both`,
-                      boxShadow: `0 0 24px ${alpha(theme.color, "12")}`,
                     }}
                   >
-                    <GroupCrest seed={invite.crestSeed || invite.groupId} themeColor={invite.themeColor} size={48} />
+                    <CircleTile name={invite.groupName} themeColor={invite.themeColor} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
                         fontSize: 9, color: theme.color,
-                        letterSpacing: "0.26em", textTransform: "uppercase",
+                        letterSpacing: "0.22em", textTransform: "uppercase",
                         fontWeight: 700, marginBottom: 4,
-                        display: "flex", alignItems: "center", gap: 4,
                       }}>
-                        <Mail size={9} /> Sealed scroll
+                        Invite
                       </div>
                       <div style={{
                         fontFamily: SERIF, fontSize: 19, fontWeight: 500,
@@ -154,9 +162,9 @@ export default function GroupsScreen({
           </div>
         )}
 
-        {/* Your orders */}
+        {/* Your Circles */}
         <div style={{ marginBottom: 32 }}>
-          <SectionHeader label="Your orders" count={groups.length} />
+          <SectionHeader label="Your Circles" count={groups.length} />
           {groups.length === 0 ? (
             <div style={{
               padding: "40px 20px", textAlign: "center",
@@ -164,15 +172,13 @@ export default function GroupsScreen({
               color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic",
               fontSize: 15,
             }}>
-              No orders yet. Found one to begin.
+              No Circles yet. Create one to begin.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {groups.map((g, i) => {
                 const theme = GROUP_THEMES[g.themeColor] || GROUP_THEMES.solar;
                 const { level } = getGroupLevelFromXP(g.groupXP || 0);
-                const archs = memberArchetypesOf(g, friends, userArchetype);
-                const activeShared = (g.sharedQuests || []).filter((q) => q.status === "active").length;
                 return (
                   <button
                     key={g.id}
@@ -180,37 +186,24 @@ export default function GroupsScreen({
                     className="tappable"
                     style={{
                       display: "flex", alignItems: "center", gap: 14,
-                      padding: "16px 18px",
+                      padding: "14px 16px",
                       background: CARD,
                       border: `1px solid ${BORDER}`,
-                      borderRadius: 16,
+                      borderRadius: 14,
                       cursor: "pointer", textAlign: "left",
                       animation: `fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${i * 80 + 100}ms both`,
                       transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                     }}
                   >
-                    <GroupCrest
-                      seed={g.crestSeed}
-                      themeColor={g.themeColor}
-                      memberArchetypes={archs}
-                      size={56}
-                    />
+                    <CircleTile name={g.name} themeColor={g.themeColor} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontFamily: SERIF, fontSize: 20, fontWeight: 500,
-                        color: TEXT, lineHeight: 1.1, letterSpacing: "0.01em",
+                        fontFamily: SERIF, fontSize: 18, fontWeight: 500,
+                        color: TEXT, lineHeight: 1.15, letterSpacing: "0.01em",
                         marginBottom: 2,
                       }}>
                         {g.name}
                       </div>
-                      {g.motto && (
-                        <div style={{
-                          fontFamily: SERIF, fontSize: 12, color: TEXT_DIM,
-                          fontStyle: "italic", marginBottom: 6,
-                        }}>
-                          {g.motto}
-                        </div>
-                      )}
                       <div style={{
                         display: "flex", alignItems: "center", gap: 8,
                         fontSize: 10, color: TEXT_MID,
@@ -218,13 +211,7 @@ export default function GroupsScreen({
                       }}>
                         <span style={{ color: theme.color }}>Lv. {level}</span>
                         <span style={{ opacity: 0.4 }}>·</span>
-                        <span>{g.memberIds.length} bound</span>
-                        {activeShared > 0 && (
-                          <>
-                            <span style={{ opacity: 0.4 }}>·</span>
-                            <span style={{ color: theme.color }}>{activeShared} active</span>
-                          </>
-                        )}
+                        <span>{g.memberIds.length} {g.memberIds.length === 1 ? "member" : "members"}</span>
                       </div>
                     </div>
                   </button>
@@ -234,28 +221,26 @@ export default function GroupsScreen({
           )}
         </div>
 
-        {/* Found new */}
+        {/* Create new */}
         <button
-          onClick={() => canCreateMore && onOpenCreate?.()}
-          disabled={!canCreateMore}
+          onClick={() => onOpenCreate?.()}
           className="tappable"
           style={{
             width: "100%", padding: "16px",
-            background: canCreateMore ? alpha(ACCENT, "10") : "transparent",
-            border: `1px ${canCreateMore ? "solid" : "dashed"} ${canCreateMore ? alpha(ACCENT, "50") : BORDER}`,
+            background: alpha(ACCENT, "10"),
+            border: `1px solid ${alpha(ACCENT, "50")}`,
             borderRadius: 14,
-            color: canCreateMore ? ACCENT : TEXT_DIM,
+            color: ACCENT,
             fontFamily: "'Outfit', sans-serif",
             fontSize: 11, fontWeight: 700,
             letterSpacing: "0.22em", textTransform: "uppercase",
-            cursor: canCreateMore ? "pointer" : "not-allowed",
-            opacity: canCreateMore ? 1 : 0.55,
+            cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             animation: "fadeUp 0.5s ease 400ms both",
           }}
         >
           <Plus size={14} />
-          {canCreateMore ? "Found an Order" : `Maximum ${MAX_GROUPS_PER_USER} orders`}
+          New Circle
         </button>
       </div>
     </div>

@@ -54,24 +54,14 @@ export function getCrestSymbol(seed) {
   return CREST_SYMBOLS[hashSeed(String(seed || "default")) % CREST_SYMBOLS.length];
 }
 
-// End-of-today timestamp (used for shared quest deadlines).
-const endOfToday = () => {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
-};
-
 // ── Activity feed event types ──
-// Each order keeps a chronological log of meaningful events. Feed is capped
+// Each Circle keeps a chronological log of meaningful events. Feed is capped
 // at MAX_FEED_LENGTH (oldest pruned on write).
 export const FEED_EVENT_TYPES = {
-  CONTRIBUTION:      "contribution",        // a member contributed to a shared quest
-  QUEST_COMPLETE:    "quest_complete",      // all members contributed, quest done
-  QUEST_CREATED:     "quest_created",       // a member forged a new shared quest
   MEMBER_JOIN:       "member_join",         // a member accepted an invite
-  FOUNDED:           "founded",             // a member founded the order
-  STREAK_MILESTONE:  "streak_milestone",    // group's collective streak hit a milestone
-  LEVEL_UP:          "level_up",            // group reached a new level
+  FOUNDED:           "founded",             // a member founded the Circle
+  STREAK_MILESTONE:  "streak_milestone",    // Circle's collective streak hit a milestone
+  LEVEL_UP:          "level_up",            // Circle reached a new level
 };
 
 export const MAX_FEED_LENGTH = 30;
@@ -90,20 +80,13 @@ export function pushFeedEvent(group, event) {
 // Seed activity feed timestamps are computed at module load relative to
 // `now`, so on first state-init the feed reads "12h ago / 1d ago / ..." etc.
 const _seedNow = Date.now();
-const _hoursAgo = (h) => _seedNow - h * 60 * 60 * 1000;
 const _daysAgo = (d) => _seedNow - d * 24 * 60 * 60 * 1000;
 
 const SEED_IRON_SUN_FEED = [
-  { id: _hoursAgo(12) + 0.1, type: "contribution", actorId: "f2", timestamp: _hoursAgo(12), xpDelta: 25,
-    payload: { questId: "sq_iron_1", questTitle: "All move 30 min today" } },
   { id: _daysAgo(1) + 0.2, type: "level_up", timestamp: _daysAgo(1),
     payload: { newLevel: 4 } },
   { id: _daysAgo(2) + 0.3, type: "streak_milestone", timestamp: _daysAgo(2), xpDelta: 50,
     payload: { streakDays: 3 } },
-  { id: _daysAgo(3) + 0.4, type: "quest_created", actorId: "me", timestamp: _daysAgo(3),
-    payload: { questId: "sq_iron_1", questTitle: "All move 30 min today", category: "fitness" } },
-  { id: _daysAgo(5) + 0.5, type: "contribution", actorId: "f1", timestamp: _daysAgo(5), xpDelta: 25,
-    payload: { questId: "sq_iron_past", questTitle: "Read 30 pages this week" } },
   { id: _daysAgo(8) + 0.6, type: "member_join", actorId: "f1", timestamp: _daysAgo(8), xpDelta: 100,
     payload: { memberId: "f1", memberName: "Jordan" } },
   { id: _daysAgo(10) + 0.7, type: "member_join", actorId: "f2", timestamp: _daysAgo(10), xpDelta: 100,
@@ -116,41 +99,26 @@ export const SEED_GROUPS = [
   {
     id: "g_iron_sun",
     name: "The Iron Sun",
-    motto: "Bound by fire.",
+    motto: "Move every day.",
     themeColor: "solar",
     crestSeed: "iron-sun-2026",
     founderId: "me",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12, // 12 days ago
     memberIds: ["me", "f2", "f1"],
     pendingInvites: [],
-    // Group XP state — seeded so the order doesn't start at Level I.
-    // 350 XP places The Iron Sun at Level IV with progress toward V.
     groupXP: 350,
-    streakDays: 5,                                      // 5-day collective streak
-    lastActivityDate: (() => {                          // yesterday
+    streakDays: 5,
+    lastActivityDate: (() => {
       const d = new Date();
       d.setDate(d.getDate() - 1);
       return d.toISOString().slice(0, 10);
     })(),
-    sharedQuests: [
-      {
-        id: "sq_iron_1",
-        title: "All move 30 min today",
-        category: "fitness",
-        xpReward: 150,
-        participantIds: ["me", "f2", "f1"],
-        contributedIds: ["f2"],
-        deadline: endOfToday(),
-        status: "active",
-      },
-    ],
     activityFeed: SEED_IRON_SUN_FEED,
   },
 ];
 
 // ── Seed invites ──
-// 1 pending invite TO the user — the Sealed Scroll triggers when GroupsScreen
-// opens. Lets the user experience the invitation ceremony immediately.
+// 1 pending invite TO the user.
 export const SEED_GROUP_INVITES = [
   {
     groupId: "g_quiet_hand",
@@ -164,17 +132,12 @@ export const SEED_GROUP_INVITES = [
   },
 ];
 
-export const MAX_GROUPS_PER_USER = 3;
-
 // ── Group XP system ──
-// Only these events award group XP. Personal quest completions DO NOT
-// award group XP — they only signal "the order was active today" for the
-// streak counter, which awards XP at milestones.
+// Personal quest completions DO NOT award group XP — they only signal "the
+// Circle was active today" for the streak counter, which awards XP at milestones.
 export const GROUP_XP_AWARDS = {
-  SHARED_CONTRIBUTION: 25,   // one member marks contributed
-  SHARED_COMPLETION:   200,  // all members contributed (bonus on top of quest.xpReward)
-  MEMBER_JOIN:         100,  // a new member accepts a summons
-  STREAK_MILESTONE:    50,   // every Nth consecutive active day (see interval below)
+  MEMBER_JOIN:         100,  // a new member accepts an invite
+  STREAK_MILESTONE:    50,   // every Nth consecutive active day
 };
 
 // Award streak milestone XP every N consecutive active days.

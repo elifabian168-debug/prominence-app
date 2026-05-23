@@ -1,12 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, UserPlus, Plus, LogOut, Crown, Hourglass, Flame } from "lucide-react";
-import { ACCENT, BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
-import { ARCHETYPES, CATEGORIES } from "../constants/categories";
+import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass, Flame } from "lucide-react";
+import { BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ARCHETYPES } from "../constants/categories";
 import { GROUP_THEMES, getGroupLevelFromXP } from "../constants/groupsData";
 import { formatXP, toRoman } from "../utils/xp";
 import GroupCrest from "../components/groups/GroupCrest";
-import SharedQuestCard from "../components/groups/SharedQuestCard";
-import OrderActivityRow from "../components/groups/OrderActivityRow";
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -24,8 +22,6 @@ export default function GroupDetailScreen({
   onBack,
   onInvite,
   onCancelInvite,
-  onCreateSharedQuest,
-  onContributeShared,
   onLeaveGroup,
 }) {
   const [enter, setEnter] = useState(false);
@@ -50,17 +46,13 @@ export default function GroupDetailScreen({
 
   const memberArchetypes = members.map((m) => m.archetype);
 
-  // Group level — derived from the order's permanent XP pool.
-  // XP sources: shared quest contributions, shared quest completions,
-  // member joins, and streak milestones (every 3 consecutive active days).
+  // Circle level — derived from its permanent XP pool.
+  // XP sources: member joins, and streak milestones (every 3 active days).
   const groupXP = group.groupXP || 0;
   const { level, xpIntoLevel, xpForNextLevel, progress } = getGroupLevelFromXP(groupXP);
   const streakDays = group.streakDays || 0;
 
   const daysFounded = group.createdAt ? Math.max(1, Math.floor((Date.now() - group.createdAt) / DAY_MS)) : 1;
-
-  const activeQuests = (group.sharedQuests || []).filter((q) => q.status === "active");
-  const completedQuests = (group.sharedQuests || []).filter((q) => q.status === "complete");
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, paddingBottom: 40 }}>
@@ -83,7 +75,7 @@ export default function GroupDetailScreen({
             display: "flex", alignItems: "center", gap: 4,
             cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 500,
           }}>
-            <ChevronLeft size={18} /> Orders
+            <ChevronLeft size={18} /> Circles
           </button>
           <button
             onClick={() => onLeaveGroup?.(group.id)}
@@ -138,7 +130,7 @@ export default function GroupDetailScreen({
           }}>
             <Vital label="Level" value={toRoman(level)} color={theme.color} />
             <Divider />
-            <Vital label="Bound" value={members.length} color={theme.color} />
+            <Vital label="Members" value={members.length} color={theme.color} />
             <Divider />
             <Vital label="Day" value={daysFounded} color={theme.color} />
           </div>
@@ -151,8 +143,8 @@ export default function GroupDetailScreen({
           </div>
         </div>
 
-        {/* Order's Ledger — XP pool, streak, level progress */}
-        <SectionHeader label="The Ledger" color={theme.color} />
+        {/* Ledger — XP pool, streak, level progress */}
+        <SectionHeader label="Activity" color={theme.color} />
         <div style={{
           padding: "16px 18px",
           background: CARD,
@@ -172,7 +164,7 @@ export default function GroupDetailScreen({
                 letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700,
                 marginBottom: 4,
               }}>
-                Order XP
+                Circle XP
               </div>
               <div style={{
                 fontFamily: SERIF, fontSize: 28, fontWeight: 500,
@@ -251,12 +243,12 @@ export default function GroupDetailScreen({
             fontWeight: 600, fontStyle: "normal",
             display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap",
           }}>
-            <span>Shared quests · Member joins · Streak milestones</span>
+            <span>Member joins · Streak milestones</span>
           </div>
         </div>
 
         {/* Members */}
-        <SectionHeader label="The Bound" count={members.length} color={theme.color} />
+        <SectionHeader label="Members" count={members.length} color={theme.color} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
           {members.map((m, i) => {
             const arch = ARCHETYPES[m.archetype] || ARCHETYPES.balanced;
@@ -348,7 +340,7 @@ export default function GroupDetailScreen({
                     letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600,
                     marginTop: 2,
                   }}>
-                    Summons pending
+                    Invite pending
                   </div>
                 </div>
                 <button
@@ -361,7 +353,7 @@ export default function GroupDetailScreen({
                     cursor: "pointer",
                   }}
                 >
-                  Recall
+                  Cancel
                 </button>
               </div>
             );
@@ -387,77 +379,7 @@ export default function GroupDetailScreen({
           }}
         >
           <UserPlus size={14} />
-          Summon a Friend
-        </button>
-
-        {/* Recent activity */}
-        {(() => {
-          const feed = (group.activityFeed || []).slice(0, 12);
-          if (feed.length === 0) return null;
-          return (
-            <>
-              <SectionHeader label="Recent" count={feed.length} color={theme.color} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
-                {feed.map((event, i) => (
-                  <div key={event.id} style={{ animation: `fadeUp 0.4s ease ${i * 40}ms both` }}>
-                    <OrderActivityRow
-                      event={event}
-                      group={group}
-                      friends={friends}
-                      userName={userName}
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
-          );
-        })()}
-
-        {/* Shared quests */}
-        <SectionHeader label="Shared Quests" count={activeQuests.length + completedQuests.length} color={theme.color} />
-
-        {(activeQuests.length + completedQuests.length) === 0 ? (
-          <div style={{
-            padding: "32px 16px", textAlign: "center",
-            border: `1px dashed ${BORDER}`, borderRadius: 14,
-            color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", fontSize: 14,
-            marginBottom: 16,
-          }}>
-            No shared quests yet — forge the first.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-            {[...activeQuests, ...completedQuests].map((q, i) => (
-              <div key={q.id} style={{ animation: `fadeUp 0.4s ease ${i * 70}ms both` }}>
-                <SharedQuestCard
-                  quest={q}
-                  members={members}
-                  onContribute={(qid) => onContributeShared?.(group.id, qid)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Forge shared quest CTA */}
-        <button
-          onClick={() => onCreateSharedQuest?.(group)}
-          className="tappable"
-          style={{
-            width: "100%", padding: "14px",
-            background: "transparent",
-            border: `1px dashed ${alpha(theme.color, "50")}`,
-            borderRadius: 12,
-            color: theme.color,
-            fontFamily: "'Outfit', sans-serif",
-            fontSize: 11, fontWeight: 700,
-            letterSpacing: "0.22em", textTransform: "uppercase",
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}
-        >
-          <Plus size={14} />
-          Forge a Shared Quest
+          Invite a Friend
         </button>
       </div>
     </div>

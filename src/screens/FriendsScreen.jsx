@@ -104,7 +104,7 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
         </button>
       </div>
 
-      {/* Orders entry */}
+      {/* Circles entry */}
       {onOpenGroups && (
         <button
           onClick={onOpenGroups}
@@ -139,10 +139,10 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
               letterSpacing: "0.3em", textTransform: "uppercase",
               fontWeight: 700, marginBottom: 4,
             }}>
-              The Orders
+              Circles
             </div>
             <div style={{ fontFamily: SERIF, fontSize: 18, color: TEXT, lineHeight: 1, letterSpacing: "0.01em" }}>
-              {groupCount === 0 ? "Found your first" : `${groupCount} bond${groupCount > 1 ? "s" : ""}`}
+              {groupCount === 0 ? "Create your first" : `${groupCount} ${groupCount === 1 ? "Circle" : "Circles"}`}
             </div>
           </div>
           {pendingInviteCount > 0 && (

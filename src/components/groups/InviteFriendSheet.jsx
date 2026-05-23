@@ -1,12 +1,11 @@
-import { useState } from "react";
 import { X } from "lucide-react";
-import { ACCENT, BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../../constants/theme";
+import { BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, SERIF, alpha } from "../../constants/theme";
 import { ARCHETYPES } from "../../constants/categories";
 import { GROUP_THEMES } from "../../constants/groupsData";
 
 // ── InviteFriendSheet ──
-// Bottom sheet to pick a friend (who isn't already a member or invited) to summon.
-// On select, returns the friend object — parent typically opens SealedScroll next.
+// Bottom sheet to pick a friend (who isn't already a member or invited).
+// On select, returns the friend object — parent fires the invite directly.
 export default function InviteFriendSheet({
   open,
   friends = [],
@@ -63,7 +62,7 @@ export default function InviteFriendSheet({
               fontSize: 10, color: TEXT_DIM,
               letterSpacing: "0.32em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6,
             }}>
-              Summon to the Order
+              Invite to Circle
             </div>
             <div style={{ fontFamily: SERIF, fontSize: 24, color: TEXT, lineHeight: 1, letterSpacing: "0.02em" }}>
               {group?.name}
@@ -86,7 +85,7 @@ export default function InviteFriendSheet({
             padding: "32px 16px", textAlign: "center",
             color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", fontSize: 14,
           }}>
-            No friends left to summon — all are members or already invited.
+            No friends left to invite — all are members or already invited.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -141,7 +140,7 @@ export default function InviteFriendSheet({
                     fontSize: 9, color: theme.color,
                     letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700,
                   }}>
-                    Summon →
+                    Invite →
                   </div>
                 </button>
               );

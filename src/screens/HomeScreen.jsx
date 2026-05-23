@@ -12,7 +12,7 @@ import GroupCrest from "../components/groups/GroupCrest";
 const WEEKLY_ACCENT = "#7CA9F2";
 const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
 
-export default function HomeScreen({ state, name, levelingUp, xpGains, completeTask, completeMainQuest, completeWeeklyQuest, onOpenActions, onOpenFriends, onOpenLifeStats, onOpenNotifs, onAddWeekly, onCreateQuest, groups = [], groupInvites = [], onOpenGroups, onOpenOrder }) {
+export default function HomeScreen({ state, name, levelingUp, xpGains, completeTask, completeMainQuest, completeWeeklyQuest, onOpenActions, onOpenFriends, onOpenLifeStats, onOpenNotifs, onAddWeekly, onCreateQuest, groups = [], groupInvites = [], onOpenGroups, onOpenCircle }) {
   const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
   const { totalXP, tasks, mainQuest, streak } = state;
   const pendingWeekly = (state.weeklyQuests || []).filter(q => q.status === "pending");
@@ -184,9 +184,9 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
               <Shield size={13} color={groupInvites.length > 0 ? ACCENT : TEXT_MID} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: TEXT_DIM, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Orders</div>
+              <div style={{ fontSize: 9, color: TEXT_DIM, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Circles</div>
               <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginTop: 1 }}>
-                {groups.length === 0 ? "None yet" : `${groups.length} sworn`}
+                {groups.length === 0 ? "None yet" : `${groups.length}`}
               </div>
             </div>
             {groupInvites.length > 0 && (
@@ -249,7 +249,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
         );
       })()}
 
-      {/* In your orders — last 1-2 events across all the user's orders */}
+      {/* In your Circles — last 1-2 events across all the user's Circles */}
       {(() => {
         if (!groups || groups.length === 0) return null;
         const events = [];
@@ -268,7 +268,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
               letterSpacing: "0.22em", textTransform: "uppercase",
               marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontWeight: 600,
             }}>
-              <Shield size={11} color={ACCENT} /> In Your Orders
+              <Shield size={11} color={ACCENT} /> In Your Circles
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {top.map(({ event, group }) => {
@@ -279,11 +279,8 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
                 const who = actor.isMe ? "You" : actor.name;
                 const text = (() => {
                   switch (event.type) {
-                    case "contribution":     return `${who} contributed to "${event.payload?.questTitle || "a quest"}"`;
-                    case "quest_complete":   return `"${event.payload?.questTitle || "Shared quest"}" complete`;
-                    case "quest_created":    return `${who} forged "${event.payload?.questTitle || "a quest"}"`;
-                    case "member_join":      return `${who} joined the order`;
-                    case "founded":          return `${who} founded the order`;
+                    case "member_join":      return `${who} joined the Circle`;
+                    case "founded":          return `${who} started the Circle`;
                     case "streak_milestone": return `${event.payload?.streakDays || ""}-day streak`;
                     case "level_up":         return `Reached Level ${event.payload?.newLevel || ""}`;
                     default:                  return "Activity";
@@ -294,7 +291,7 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
                 return (
                   <button
                     key={event.id}
-                    onClick={() => onOpenOrder?.(group)}
+                    onClick={() => onOpenCircle?.(group)}
                     className="tappable"
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
