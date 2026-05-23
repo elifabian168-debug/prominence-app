@@ -106,7 +106,7 @@ export default function Prominence() {
     markAllNotificationsRead, dismissNotification,
   } = useFriends(state, setState, { showToast });
 
-  const { posts, cheerPost, uncheerPost } = usePosts(state, setState);
+  const { posts, cheerPost, uncheerPost, addComment, deleteComment } = usePosts(state, setState);
 
   // ── Action handlers ───────────────────────────────────────────────────────
   // kind: "task" | "main" | "weekly"
@@ -317,6 +317,8 @@ export default function Prominence() {
                   posts={posts}
                   onCheer={cheerPost}
                   onUncheer={uncheerPost}
+                  onAddComment={addComment}
+                  onDeleteComment={deleteComment}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onOpenFriends={() => setShowAddFriends(true)} />
               </div>

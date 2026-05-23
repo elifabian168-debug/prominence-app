@@ -46,8 +46,43 @@ export function usePosts(state, setState) {
     [setState]
   );
 
+  const addComment = useCallback(
+    (postId, text) => {
+      const trimmed = (text || "").trim();
+      if (!trimmed) return;
+      const now = Date.now();
+      const comment = {
+        id: `c_${now}_${Math.floor(Math.random() * 1000)}`,
+        userId: "me",
+        text: trimmed.slice(0, 280),
+        at: now,
+      };
+      setState((prev) => ({
+        ...prev,
+        posts: (prev.posts || []).map((p) =>
+          p.id !== postId ? p : { ...p, comments: [...(p.comments || []), comment] }
+        ),
+      }));
+    },
+    [setState]
+  );
+
+  const deleteComment = useCallback(
+    (postId, commentId) => {
+      setState((prev) => ({
+        ...prev,
+        posts: (prev.posts || []).map((p) =>
+          p.id !== postId
+            ? p
+            : { ...p, comments: (p.comments || []).filter((c) => c.id !== commentId) }
+        ),
+      }));
+    },
+    [setState]
+  );
+
   return useMemo(
-    () => ({ posts, cheerPost, uncheerPost, deletePost }),
-    [posts, cheerPost, uncheerPost, deletePost]
+    () => ({ posts, cheerPost, uncheerPost, deletePost, addComment, deleteComment }),
+    [posts, cheerPost, uncheerPost, deletePost, addComment, deleteComment]
   );
 }

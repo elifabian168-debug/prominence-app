@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, UserPlus, Sparkles } from "lucide-react";
+import { Bell, UserPlus, Sparkles, MessageCircle, Send } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 
@@ -45,6 +45,8 @@ export default function FeedScreen({
   posts = [],
   onCheer,
   onUncheer,
+  onAddComment,
+  onDeleteComment,
   onOpenNotifs,
   onOpenFriends,
 }) {
@@ -178,8 +180,11 @@ export default function FeedScreen({
               key={p.id}
               post={p}
               author={resolveAuthor(state, userName, p.authorId)}
+              resolveCommenter={(id) => resolveAuthor(state, userName, id)}
               onCheer={onCheer}
               onUncheer={onUncheer}
+              onAddComment={onAddComment}
+              onDeleteComment={onDeleteComment}
             />
           ))
         )}
@@ -188,15 +193,26 @@ export default function FeedScreen({
   );
 }
 
-function PostCard({ post, author, onCheer, onUncheer }) {
+function PostCard({ post, author, resolveCommenter, onCheer, onUncheer, onAddComment, onDeleteComment }) {
   const arch = ARCHETYPES[author.archetype] || ARCHETYPES.balanced;
   const cat = CATEGORIES[post.goalRef?.category] || null;
   const youCheered = (post.cheers || []).some((c) => c.userId === "me");
   const cheerCount = (post.cheers || []).length;
+  const comments = post.comments || [];
+  const [showComments, setShowComments] = useState(comments.length > 0 && comments.length <= 2);
+  const [draft, setDraft] = useState("");
 
   const toggleCheer = () => {
     if (youCheered) onUncheer?.(post.id);
     else onCheer?.(post.id);
+  };
+
+  const submitComment = () => {
+    const text = draft.trim();
+    if (!text) return;
+    onAddComment?.(post.id, text);
+    setDraft("");
+    setShowComments(true);
   };
 
   return (
@@ -268,7 +284,7 @@ function PostCard({ post, author, onCheer, onUncheer }) {
 
       {/* Footer */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 10,
+        display: "flex", alignItems: "center", gap: 8,
         paddingTop: 8, borderTop: `1px solid ${alpha(BORDER, "70")}`,
       }}>
         <button
@@ -289,7 +305,108 @@ function PostCard({ post, author, onCheer, onUncheer }) {
           <Sparkles size={12} />
           <span>{cheerCount > 0 ? `Cheered · ${cheerCount}` : "Cheer"}</span>
         </button>
+        <button
+          onClick={() => setShowComments((v) => !v)}
+          className="tappable"
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "5px 10px",
+            background: "transparent",
+            border: `1px solid ${BORDER_BR}`,
+            borderRadius: 99,
+            color: TEXT_MID,
+            fontSize: 11, fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <MessageCircle size={12} />
+          <span>{comments.length > 0 ? `${comments.length}` : "Comment"}</span>
+        </button>
       </div>
+
+      {showComments && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {comments.map((c) => {
+            const cAuthor = resolveCommenter(c.userId);
+            const cArch = ARCHETYPES[cAuthor.archetype] || ARCHETYPES.balanced;
+            return (
+              <div key={c.id} style={{
+                display: "flex", gap: 8, alignItems: "flex-start",
+              }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                  background: `linear-gradient(135deg, ${alpha(cArch.color, "65")}, ${alpha(cArch.color, "20")})`,
+                  border: `1px solid ${alpha(cArch.color, "55")}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 10, color: "#FFF", fontWeight: 600 }}>
+                    {cAuthor.initial}
+                  </span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.35 }}>
+                    <span style={{ fontWeight: 600, marginRight: 6 }}>{cAuthor.name}</span>
+                    {c.text}
+                  </div>
+                  <div style={{ fontSize: 10, color: TEXT_DIM, marginTop: 2, display: "flex", gap: 8 }}>
+                    <span>{formatRelative(c.at)}</span>
+                    {c.userId === "me" && onDeleteComment && (
+                      <button
+                        onClick={() => onDeleteComment(post.id, c.id)}
+                        style={{
+                          background: "transparent", border: "none", padding: 0,
+                          color: TEXT_DIM, fontSize: 10, cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Compose */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "6px 8px 6px 12px",
+            background: BG,
+            border: `1px solid ${BORDER_BR}`,
+            borderRadius: 99,
+            marginTop: comments.length > 0 ? 4 : 0,
+          }}>
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, 280))}
+              onKeyDown={(e) => { if (e.key === "Enter") submitComment(); }}
+              placeholder="Add a comment…"
+              style={{
+                flex: 1, background: "transparent", border: "none", outline: "none",
+                color: TEXT, fontSize: 13, fontFamily: "inherit", padding: "4px 0",
+              }}
+            />
+            <button
+              onClick={submitComment}
+              disabled={!draft.trim()}
+              aria-label="Send"
+              style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: draft.trim() ? ACCENT : "transparent",
+                color: draft.trim() ? BG : TEXT_DIM,
+                border: `1px solid ${draft.trim() ? ACCENT : BORDER_BR}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: draft.trim() ? "pointer" : "not-allowed",
+                flexShrink: 0,
+                transition: "all 0.2s ease",
+              }}
+            >
+              <Send size={12} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

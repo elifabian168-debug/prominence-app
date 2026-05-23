@@ -109,7 +109,9 @@ export const SEED_POSTS = [
     audienceMode: "private",
     createdAt: _hoursAgo(3),
     cheers: [{ userId: "f4", at: _hoursAgo(2) }, { userId: "f5", at: _hoursAgo(2) }],
-    comments: [],
+    comments: [
+      { id: "c_seed_3_1", userId: "f5", text: "this is the streak I'm jealous of", at: _hoursAgo(2) },
+    ],
   },
   {
     id: "p_seed_4",
