@@ -1,12 +1,12 @@
-import { Home, BarChart3, Plus, Swords, User } from "lucide-react";
+import { Home, Newspaper, Plus, Users, User } from "lucide-react";
 import { ACCENT, BG, BORDER, TEXT_DIM, alpha } from "../../constants/theme";
 
 const TABS = [
   { id: "home",    icon: Home,      label: "Home" },
-  { id: "stats",   icon: BarChart3, label: "Stats" },
+  { id: "feed",    icon: Newspaper, label: "Feed" },
   { id: "add",     icon: Plus,      isAdd: true },
-  { id: "quests",  icon: Swords,    label: "Quests" },
-  { id: "profile", icon: User,      label: "Profile" },
+  { id: "circles", icon: Users,     label: "Circles" },
+  { id: "you",     icon: User,      label: "You" },
 ];
 
 export default function TabBar({ activeTab, onTabChange, onAdd }) {

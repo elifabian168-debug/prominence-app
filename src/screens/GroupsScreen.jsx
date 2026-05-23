@@ -59,24 +59,27 @@ export default function GroupsScreen({
       }} />
 
       <div style={{ position: "relative", zIndex: 1, padding: "0 20px" }}>
-        {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          paddingTop: 24, paddingBottom: 20,
-          opacity: enter ? 1 : 0,
-          transform: enter ? "translateY(0)" : "translateY(-6px)",
-          transition: "opacity 0.4s ease, transform 0.4s ease",
-        }}>
-          <button onClick={onBack} style={{
-            background: "transparent", border: "none", color: TEXT_DIM,
-            display: "flex", alignItems: "center", gap: 4,
-            cursor: "pointer", padding: 0,
-            fontSize: 13, fontWeight: 500,
+        {/* Header — back button only when rendered as an overlay */}
+        {onBack && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            paddingTop: 24, paddingBottom: 20,
+            opacity: enter ? 1 : 0,
+            transform: enter ? "translateY(0)" : "translateY(-6px)",
+            transition: "opacity 0.4s ease, transform 0.4s ease",
           }}>
-            <ChevronLeft size={18} />
-            Friends
-          </button>
-        </div>
+            <button onClick={onBack} style={{
+              background: "transparent", border: "none", color: TEXT_DIM,
+              display: "flex", alignItems: "center", gap: 4,
+              cursor: "pointer", padding: 0,
+              fontSize: 13, fontWeight: 500,
+            }}>
+              <ChevronLeft size={18} />
+              Friends
+            </button>
+          </div>
+        )}
+        {!onBack && <div style={{ paddingTop: 20 }} />}
 
         {/* Title */}
         <div style={{

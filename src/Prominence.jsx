@@ -21,9 +21,8 @@ import TaskActionSheet from "./components/tasks/TaskActionSheet";
 import TaskEditModal from "./components/tasks/TaskEditModal";
 
 import HomeScreen from "./screens/HomeScreen";
-import StatsScreen from "./screens/StatsScreen";
-import QuestsScreen from "./screens/QuestsScreen";
-import ProfileScreen from "./screens/ProfileScreen";
+import FeedScreen from "./screens/FeedScreen";
+import YouScreen from "./screens/YouScreen";
 import LifeStatsScreen from "./screens/LifeStatsScreen";
 import FriendsScreen from "./screens/FriendsScreen";
 import FriendDetailScreen from "./screens/FriendDetailScreen";
@@ -88,7 +87,8 @@ export default function Prominence() {
   const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
 
   // ── Circles state ─────────────────────────────────────────────────────────
-  const [showGroups, setShowGroups]                 = useState(false);
+  // The Circles list lives on its own tab (activeTab === "circles"). The
+  // detail / create / invite flows still ride on top as overlays.
   const [groupDetail, setGroupDetail]               = useState(null);          // Circle object currently open
   const [creatingGroup, setCreatingGroup]           = useState(false);
   const [respondingToInvite, setRespondingToInvite] = useState(null);          // invite object
@@ -200,7 +200,7 @@ export default function Prominence() {
 
   const showOverlayNav =
     !showLifeStats && !showFriends && !showAddFriends && !friendDetail &&
-    !showGroups && !groupDetail && !creatingGroup;
+    !groupDetail && !creatingGroup;
 
   const userArchetype = getArchetype(state.statXP);
   const userWeeklyXP  = state.activityLog?.[new Date().toISOString().slice(0, 10)]?.xp || 0;
@@ -275,20 +275,6 @@ export default function Prominence() {
               onLeaveGroup={(gid) => { leaveGroup(gid); setGroupDetail(null); showToast("Left the Circle"); }}
             />
           </div>
-        ) : showGroups ? (
-          <div style={{ animation: "screenIn 0.3s ease" }}>
-            <GroupsScreen
-              groups={groups}
-              groupInvites={groupInvites}
-              friends={state.friends || []}
-              userArchetype={userArchetype}
-              userWeeklyXP={userWeeklyXP}
-              onOpenGroup={(g) => setGroupDetail(g)}
-              onOpenCreate={() => setCreatingGroup(true)}
-              onOpenInvite={(invite) => setRespondingToInvite(invite)}
-              onBack={() => setShowGroups(false)}
-            />
-          </div>
         ) : showFriends ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
             <FriendsScreen state={state} userXP={state.totalXP} userName={user.name}
@@ -296,7 +282,7 @@ export default function Prominence() {
               onOpenFriend={setFriendDetail}
               onCheer={sendCheer}
               onOpenAdd={() => setShowAddFriends(true)}
-              onOpenGroups={() => setShowGroups(true)}
+              onOpenGroups={() => setActiveTab("circles")}
               groupCount={groups.length}
               pendingInviteCount={groupInvites.length} />
           </div>
@@ -315,29 +301,32 @@ export default function Prominence() {
                   onCreateQuest={() => openCreateModal("normal")}
                   groups={groups}
                   groupInvites={groupInvites}
-                  onOpenGroups={() => setShowGroups(true)}
+                  onOpenGroups={() => setActiveTab("circles")}
                   onOpenCircle={(g) => setGroupDetail(g)} />
               </div>
             )}
-            {activeTab === "stats" && (
+            {activeTab === "feed" && (
               <div style={{ animation: "screenIn 0.25s ease" }}>
-                <StatsScreen state={state} />
+                <FeedScreen
+                  state={state}
+                  circles={groups}
+                  onOpenNotifs={() => setNotifCenterOpen(true)}
+                  onOpenFriends={() => setShowAddFriends(true)} />
               </div>
             )}
-            {activeTab === "quests" && (
+            {activeTab === "circles" && (
               <div style={{ animation: "screenIn 0.25s ease" }}>
-                <QuestsScreen state={state}
-                  completeTask={completeTask} completeMainQuest={completeMainQuest}
-                  completeWeeklyQuest={completeWeeklyQuest}
-                  onAdd={() => openCreateModal("normal")}
-                  onAddWeekly={() => openCreateModal("weekly")}
-                  onOpenActions={openActions}
-                  onDelete={handleDeleteRequest} />
+                <GroupsScreen
+                  groups={groups}
+                  groupInvites={groupInvites}
+                  onOpenGroup={(g) => setGroupDetail(g)}
+                  onOpenCreate={() => setCreatingGroup(true)}
+                  onOpenInvite={(invite) => setRespondingToInvite(invite)} />
               </div>
             )}
-            {activeTab === "profile" && (
+            {activeTab === "you" && (
               <div style={{ animation: "screenIn 0.25s ease" }}>
-                <ProfileScreen name={user.name} bio={user.bio} createdAt={user.createdAt} state={state}
+                <YouScreen name={user.name} bio={user.bio} createdAt={user.createdAt} state={state}
                   onReset={() => setConfirmReset(true)}
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onEditProfile={() => setEditProfileOpen(true)}
