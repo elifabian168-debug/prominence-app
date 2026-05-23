@@ -8,6 +8,7 @@ import { useUndoAction } from "./hooks/useUndoAction";
 import { useGameState } from "./hooks/useGameState";
 import { useGroups } from "./hooks/useGroups";
 import { useFriends } from "./hooks/useFriends";
+import { usePosts } from "./hooks/usePosts";
 import { getInitialState } from "./utils/state";
 import { useTheme } from "./hooks/useTheme";
 import { getArchetype } from "./utils/archetype";
@@ -104,6 +105,8 @@ export default function Prominence() {
     sendCheer, toggleFriendStreak, addFriend, removeFriend,
     markAllNotificationsRead, dismissNotification,
   } = useFriends(state, setState, { showToast });
+
+  const { posts, cheerPost, uncheerPost } = usePosts(state, setState);
 
   // ── Action handlers ───────────────────────────────────────────────────────
   // kind: "task" | "main" | "weekly"
@@ -309,7 +312,11 @@ export default function Prominence() {
               <div style={{ animation: "screenIn 0.25s ease" }}>
                 <FeedScreen
                   state={state}
+                  userName={user.name}
                   circles={groups}
+                  posts={posts}
+                  onCheer={cheerPost}
+                  onUncheer={uncheerPost}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onOpenFriends={() => setShowAddFriends(true)} />
               </div>

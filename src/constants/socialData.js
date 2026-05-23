@@ -69,6 +69,61 @@ export const DISCOVERABLE_USERS = [
     weeklyQuest:    { task: "Build prototype v3",        category: "work",    xp: 410, daysLeft: 3, status: "pending" } },
 ];
 
+// ── Seed posts ──
+// A handful of recent posts from friends so the Feed isn't empty on first run.
+// Real posts get appended when the user completes a goal (see usePosts +
+// useGameState). audienceCircleIds = [] means "visible to all my friends."
+const _now = Date.now();
+const _minsAgo = (m) => _now - m * 60 * 1000;
+const _hoursAgo = (h) => _now - h * 60 * 60 * 1000;
+
+export const SEED_POSTS = [
+  {
+    id: "p_seed_1",
+    authorId: "f2",
+    goalRef: { kind: "task", title: "Morning run · 5K", category: "fitness", xp: 102 },
+    body: "",
+    audienceCircleIds: [],
+    audienceMode: "private",
+    createdAt: _minsAgo(45),
+    cheers: [{ userId: "f1", at: _minsAgo(40) }],
+    comments: [],
+  },
+  {
+    id: "p_seed_2",
+    authorId: "f1",
+    goalRef: { kind: "task", title: "Read 30 pages", category: "school", xp: 65 },
+    body: "Finally finished chapter 4.",
+    audienceCircleIds: [],
+    audienceMode: "private",
+    createdAt: _minsAgo(22),
+    cheers: [],
+    comments: [],
+  },
+  {
+    id: "p_seed_3",
+    authorId: "f3",
+    goalRef: { kind: "task", title: "20 min meditation", category: "mind", xp: 38 },
+    body: "",
+    audienceCircleIds: [],
+    audienceMode: "private",
+    createdAt: _hoursAgo(3),
+    cheers: [{ userId: "f4", at: _hoursAgo(2) }, { userId: "f5", at: _hoursAgo(2) }],
+    comments: [],
+  },
+  {
+    id: "p_seed_4",
+    authorId: "f5",
+    goalRef: { kind: "task", title: "Cooked a real dinner", category: "life", xp: 42 },
+    body: "Tried that pasta recipe.",
+    audienceCircleIds: [],
+    audienceMode: "private",
+    createdAt: _hoursAgo(1.5),
+    cheers: [],
+    comments: [],
+  },
+];
+
 // Simulated phone contacts — some match Prominence users (`matchedUserId`),
 // others are not on the app yet (matchedUserId: null → show "Invite" instead of "Add")
 export const CONTACT_MATCHES = [

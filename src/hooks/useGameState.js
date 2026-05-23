@@ -5,7 +5,7 @@ import { todayKey } from '../utils/date';
 import { getLevelFromXP, applyDailyCap } from '../utils/xp';
 import { advanceFriendStreaks } from '../utils/social';
 import { getInitialState } from '../utils/state';
-import { SEED_FRIENDS } from '../constants/socialData';
+import { SEED_FRIENDS, SEED_POSTS } from '../constants/socialData';
 import { SEED_GROUPS, SEED_GROUP_INVITES, applyGroupActivityTick } from '../constants/groupsData';
 import { TEXT_MID } from '../constants/theme';
 import { fireLocalNotification } from '../utils/notifications';
@@ -60,6 +60,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (!parsed.friends) parsed.friends = SEED_FRIENDS;
         if (!parsed.groups) parsed.groups = SEED_GROUPS;
         if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
+        if (!parsed.posts) parsed.posts = SEED_POSTS;
         // Backfill group XP + activity-feed fields for older saved groups
         parsed.groups = (parsed.groups || []).map((g) => ({
           ...g,
@@ -131,6 +132,27 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
 
   // Friend simulators (random activity ticks + inbound cheers/nudges) live in
   // useFriends now — that hook owns the social state and its mock generators.
+
+  // Build a Post for a just-completed goal. Audience defaults to [] which
+  // means "visible to all friends" — the per-Circle audience picker lands
+  // in a later cutover step.
+  const buildPost = (kind, task) => ({
+    id: `p_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    authorId: "me",
+    goalRef: {
+      kind,
+      id: task.id,
+      title: task.title,
+      category: task.category,
+      xp: task.xp,
+    },
+    body: "",
+    audienceCircleIds: [],
+    audienceMode: "private",
+    createdAt: Date.now(),
+    cheers: [],
+    comments: [],
+  });
 
   // Pure reducer: applies an XP award to the given prev state and returns the next state.
   // Reads cap/total from prev (not closure) so it's safe under rapid completions.
@@ -278,6 +300,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       const afterMark = {
         ...prev,
         weeklyQuests: prev.weeklyQuests.map(q => q.id === questId ? { ...q, status: "complete", completedAt } : q),
+        posts: [buildPost("weekly", quest), ...(prev.posts || [])],
       };
       return awardXPReducer(afterMark, quest.xp, quest.category, quest.title, true, questId, effects);
     });
@@ -334,6 +357,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       const afterMark = {
         ...prev,
         tasks: prev.tasks.map(t => t.id === taskId ? { ...t, status: "complete", completedAt } : t),
+        posts: [buildPost("task", task), ...(prev.posts || [])],
       };
       return awardXPReducer(afterMark, task.xp, task.category, task.title, false, taskId, effects);
     });
@@ -346,7 +370,11 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     setState(prev => {
       const mq = prev.mainQuest;
       if (!mq || mq.status !== "pending") return prev;
-      const afterMark = { ...prev, mainQuest: { ...mq, status: "complete", completedAt } };
+      const afterMark = {
+        ...prev,
+        mainQuest: { ...mq, status: "complete", completedAt },
+        posts: [buildPost("main", mq), ...(prev.posts || [])],
+      };
       return awardXPReducer(afterMark, mq.xp, mq.category, mq.title, false, mq.id, effects);
     });
     flushEffects(effects);
