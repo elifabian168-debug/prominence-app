@@ -1,13 +1,11 @@
 import { Bell, Flame, Users, Calendar, Plus, Sparkles, Shield } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
-import { GROUP_THEMES } from "../constants/groupsData";
 import { todayKey } from "../utils/date";
 import { getLevelFromXP } from "../utils/xp";
 import { getArchetype } from "../utils/archetype";
 import TaskCard from "../components/tasks/TaskCard";
 import WeeklyQuestCard from "../components/tasks/WeeklyQuestCard";
-import GroupCrest from "../components/groups/GroupCrest";
 
 const WEEKLY_ACCENT = "#7CA9F2";
 const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
@@ -250,87 +248,6 @@ export default function HomeScreen({ state, name, levelingUp, xpGains, completeT
                     <span style={{ fontSize: 10, color: TEXT_MID, fontWeight: 500 }}>{friend.name}</span>
                     {atRisk && <span style={{ fontSize: 9, color: "#F87171", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>at risk</span>}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* In your Circles — last 1-2 events across all the user's Circles */}
-      {(() => {
-        if (!groups || groups.length === 0) return null;
-        const events = [];
-        for (const g of groups) {
-          for (const e of (g.activityFeed || [])) {
-            events.push({ event: e, group: g });
-          }
-        }
-        if (events.length === 0) return null;
-        events.sort((a, b) => b.event.timestamp - a.event.timestamp);
-        const top = events.slice(0, 2);
-        return (
-          <div style={{ marginBottom: 22 }}>
-            <div style={{
-              fontSize: 10, color: alpha(ACCENT, "90"),
-              letterSpacing: "0.22em", textTransform: "uppercase",
-              marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontWeight: 600,
-            }}>
-              <Shield size={11} color={ACCENT} /> In Your Circles
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {top.map(({ event, group }) => {
-                const theme = GROUP_THEMES[group.themeColor] || GROUP_THEMES.solar;
-                const actor = event.actorId === "me"
-                  ? { name, isMe: true }
-                  : (state.friends || []).find((f) => f.id === event.actorId) || { name: "Someone" };
-                const who = actor.isMe ? "You" : actor.name;
-                const text = (() => {
-                  switch (event.type) {
-                    case "member_join":      return `${who} joined the Circle`;
-                    case "founded":          return `${who} started the Circle`;
-                    case "streak_milestone": return `${event.payload?.streakDays || ""}-day streak`;
-                    case "level_up":         return `Reached Level ${event.payload?.newLevel || ""}`;
-                    default:                  return "Activity";
-                  }
-                })();
-                const mins = Math.max(0, Math.floor((Date.now() - event.timestamp) / 60000));
-                const ago = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / 1440)}d ago`;
-                return (
-                  <button
-                    key={event.id}
-                    onClick={() => onOpenCircle?.(group)}
-                    className="tappable"
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "8px 10px",
-                      background: CARD,
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 10,
-                      cursor: "pointer", textAlign: "left", fontFamily: "inherit",
-                    }}
-                  >
-                    <div style={{ flexShrink: 0 }}>
-                      <GroupCrest seed={group.crestSeed} themeColor={group.themeColor} size={32} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 12, color: TEXT, lineHeight: 1.35,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {text}
-                      </div>
-                      <div style={{ fontSize: 9, color: TEXT_DIM, marginTop: 2, letterSpacing: "0.06em" }}>
-                        {group.name} · {ago}
-                      </div>
-                    </div>
-                    {event.xpDelta > 0 && (
-                      <div style={{
-                        fontFamily: SERIF, fontSize: 12, color: theme.color, fontWeight: 600,
-                        flexShrink: 0, fontVariantNumeric: "tabular-nums",
-                      }}>+{event.xpDelta}</div>
-                    )}
-                  </button>
                 );
               })}
             </div>

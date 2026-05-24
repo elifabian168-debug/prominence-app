@@ -1,17 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass, Flame } from "lucide-react";
+import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass } from "lucide-react";
 import { BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
-import { GROUP_THEMES, getGroupLevelFromXP } from "../constants/groupsData";
-import { formatXP, toRoman } from "../utils/xp";
+import { GROUP_THEMES } from "../constants/groupsData";
 import GroupCrest from "../components/groups/GroupCrest";
-
-const DAY_MS = 1000 * 60 * 60 * 24;
-
-const formatFoundedDate = (ts) => {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-};
 
 export default function GroupDetailScreen({
   group,
@@ -45,14 +37,6 @@ export default function GroupDetailScreen({
   );
 
   const memberArchetypes = members.map((m) => m.archetype);
-
-  // Circle level — derived from its permanent XP pool.
-  // XP sources: member joins, and streak milestones (every 3 active days).
-  const groupXP = group.groupXP || 0;
-  const { level, xpIntoLevel, xpForNextLevel, progress } = getGroupLevelFromXP(groupXP);
-  const streakDays = group.streakDays || 0;
-
-  const daysFounded = group.createdAt ? Math.max(1, Math.floor((Date.now() - group.createdAt) / DAY_MS)) : 1;
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, paddingBottom: 40 }}>
@@ -91,7 +75,7 @@ export default function GroupDetailScreen({
           </button>
         </div>
 
-        {/* Hero crest */}
+        {/* Hero — name + tagline. Step 10 replaces the crest with the streak hero. */}
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center",
           textAlign: "center", padding: "20px 0 28px",
@@ -103,13 +87,13 @@ export default function GroupDetailScreen({
             seed={group.crestSeed}
             themeColor={group.themeColor}
             memberArchetypes={memberArchetypes}
-            size={140}
+            size={120}
             animated
           />
           <div style={{
-            fontFamily: SERIF, fontSize: 38, fontWeight: 500,
+            fontFamily: SERIF, fontSize: 36, fontWeight: 500,
             color: TEXT, letterSpacing: "0.02em", lineHeight: 1,
-            marginTop: 18, marginBottom: 6,
+            marginTop: 16, marginBottom: 6,
             textShadow: `0 0 28px ${alpha(theme.color, "40")}`,
           }}>
             {group.name}
@@ -117,134 +101,11 @@ export default function GroupDetailScreen({
           {group.motto && (
             <div style={{
               fontFamily: SERIF, fontSize: 15, color: TEXT_MID,
-              fontStyle: "italic", marginBottom: 16,
+              fontStyle: "italic",
             }}>
               {group.motto}
             </div>
           )}
-
-          {/* Vitals row */}
-          <div style={{
-            display: "flex", alignItems: "baseline", gap: 14,
-            fontFamily: SERIF, fontWeight: 500,
-          }}>
-            <Vital label="Level" value={toRoman(level)} color={theme.color} />
-            <Divider />
-            <Vital label="Members" value={members.length} color={theme.color} />
-            <Divider />
-            <Vital label="Day" value={daysFounded} color={theme.color} />
-          </div>
-          <div style={{
-            fontSize: 10, color: TEXT_DIM,
-            letterSpacing: "0.26em", textTransform: "uppercase",
-            fontWeight: 600, marginTop: 12,
-          }}>
-            Founded {formatFoundedDate(group.createdAt)}
-          </div>
-        </div>
-
-        {/* Ledger — XP pool, streak, level progress */}
-        <SectionHeader label="Activity" color={theme.color} />
-        <div style={{
-          padding: "16px 18px",
-          background: CARD,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 14,
-          marginBottom: 28,
-          animation: "fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both",
-        }}>
-          {/* XP + Streak top row */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 14, gap: 12,
-          }}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{
-                fontSize: 9, color: TEXT_DIM,
-                letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700,
-                marginBottom: 4,
-              }}>
-                Circle XP
-              </div>
-              <div style={{
-                fontFamily: SERIF, fontSize: 28, fontWeight: 500,
-                color: theme.color, lineHeight: 1, letterSpacing: "0.02em",
-                textShadow: `0 0 16px ${alpha(theme.color, "35")}`,
-              }}>
-                {formatXP(groupXP)}
-              </div>
-            </div>
-
-            {/* Streak chip */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "8px 12px",
-              background: streakDays > 0 ? alpha(theme.color, "10") : "transparent",
-              border: `1px solid ${streakDays > 0 ? alpha(theme.color, "40") : BORDER}`,
-              borderRadius: 99,
-            }}>
-              <Flame size={13} color={streakDays > 0 ? theme.color : TEXT_DIM} />
-              <div style={{
-                fontFamily: SERIF, fontSize: 18, fontWeight: 600,
-                color: streakDays > 0 ? theme.color : TEXT_DIM,
-                lineHeight: 1, letterSpacing: "0.02em",
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                {streakDays}
-              </div>
-              <div style={{
-                fontSize: 9, color: streakDays > 0 ? theme.color : TEXT_DIM,
-                letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700,
-              }}>
-                Day Streak
-              </div>
-            </div>
-          </div>
-
-          {/* Level progress bar */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "baseline",
-              marginBottom: 6,
-            }}>
-              <div style={{
-                fontSize: 9, color: TEXT_DIM,
-                letterSpacing: "0.26em", textTransform: "uppercase", fontWeight: 700,
-              }}>
-                Lv. <span style={{ color: theme.color, fontFamily: SERIF, fontSize: 13, letterSpacing: "0.04em" }}>{toRoman(level)}</span> → <span style={{ color: theme.color, fontFamily: SERIF, fontSize: 13, letterSpacing: "0.04em" }}>{toRoman(level + 1)}</span>
-              </div>
-              <div style={{
-                fontSize: 10, color: TEXT_MID, fontVariantNumeric: "tabular-nums",
-                fontWeight: 500,
-              }}>
-                {xpIntoLevel} / {xpForNextLevel}
-              </div>
-            </div>
-            <div style={{
-              height: 4, borderRadius: 2,
-              background: alpha(theme.color, "15"),
-              overflow: "hidden",
-            }}>
-              <div style={{
-                width: `${Math.min(100, progress * 100)}%`, height: "100%",
-                background: `linear-gradient(90deg, ${theme.color}, ${GROUP_THEMES[group.themeColor]?.accent || theme.color})`,
-                boxShadow: `0 0 10px ${alpha(theme.color, "60")}`,
-                transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              }} />
-            </div>
-          </div>
-
-          {/* Sources hint */}
-          <div style={{
-            marginTop: 14, paddingTop: 12,
-            borderTop: `1px solid ${alpha(BORDER, "70")}`,
-            fontSize: 9, color: TEXT_DIM,
-            letterSpacing: "0.16em", textTransform: "uppercase",
-            fontWeight: 600, fontStyle: "normal",
-            display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap",
-          }}>
-            <span>Member joins · Streak milestones</span>
-          </div>
         </div>
 
         {/* Members */}
@@ -384,31 +245,6 @@ export default function GroupDetailScreen({
       </div>
     </div>
   );
-}
-
-function Vital({ label, value, color }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{
-        fontFamily: SERIF, fontSize: 28, fontWeight: 500,
-        color, letterSpacing: "0.02em", lineHeight: 1,
-        textShadow: `0 0 14px ${alpha(color, "40")}`,
-      }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: 8, color: TEXT_DIM,
-        letterSpacing: "0.28em", textTransform: "uppercase", fontWeight: 700,
-        marginTop: 4,
-      }}>
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function Divider() {
-  return <div style={{ width: 1, height: 28, background: BORDER }} />;
 }
 
 function SectionHeader({ label, count, color }) {

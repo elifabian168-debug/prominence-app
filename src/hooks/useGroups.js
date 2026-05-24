@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { GROUP_XP_AWARDS, FEED_EVENT_TYPES } from "../constants/groupsData";
 
 // ── The migration boundary ──
 // Today: reads/writes state.groups + state.groupInvites via setState.
@@ -37,18 +36,8 @@ export function useGroups(state, setState) {
         createdAt: now,
         memberIds: ["me"],
         pendingInvites: [],
-        groupXP: GROUP_XP_AWARDS.MEMBER_JOIN, // founder counts as the first join
         streakDays: 0,
-        lastActivityDate: null,
-        activityFeed: [
-          {
-            id: now,
-            type: FEED_EVENT_TYPES.FOUNDED,
-            actorId: "me",
-            timestamp: now,
-            payload: { memberId: "me", memberName: "You", groupName: name.trim() },
-          },
-        ],
+        lastStreakDay: null,
       };
       setState((prev) => ({ ...prev, groups: [...(prev.groups || []), next] }));
       return next;
@@ -99,7 +88,6 @@ export function useGroups(state, setState) {
     (groupId) => {
       const invite = (state.groupInvites || []).find((i) => i.groupId === groupId);
       if (!invite) return null;
-      const now = Date.now();
       const newGroup = {
         id: invite.groupId,
         name: invite.groupName,
@@ -111,19 +99,8 @@ export function useGroups(state, setState) {
         createdAt: invite.invitedAt,
         memberIds: [invite.fromId, "me"],
         pendingInvites: [],
-        groupXP: GROUP_XP_AWARDS.MEMBER_JOIN,
         streakDays: 0,
-        lastActivityDate: null,
-        activityFeed: [
-          {
-            id: now,
-            type: FEED_EVENT_TYPES.MEMBER_JOIN,
-            actorId: "me",
-            timestamp: now,
-            xpDelta: GROUP_XP_AWARDS.MEMBER_JOIN,
-            payload: { memberId: "me", memberName: "You" },
-          },
-        ],
+        lastStreakDay: null,
       };
       setState((prev) => ({
         ...prev,

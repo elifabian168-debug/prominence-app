@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
-import { GROUP_THEMES, getGroupLevelFromXP } from "../constants/groupsData";
+import { GROUP_THEMES } from "../constants/groupsData";
 
 const formatRelativeShort = (ts) => {
   if (!ts) return "";
@@ -181,7 +181,7 @@ export default function GroupsScreen({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {groups.map((g, i) => {
                 const theme = GROUP_THEMES[g.themeColor] || GROUP_THEMES.solar;
-                const { level } = getGroupLevelFromXP(g.groupXP || 0);
+                const streakDays = g.streakDays || 0;
                 return (
                   <button
                     key={g.id}
@@ -212,8 +212,12 @@ export default function GroupsScreen({
                         fontSize: 10, color: TEXT_MID,
                         letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600,
                       }}>
-                        <span style={{ color: theme.color }}>Lv. {level}</span>
-                        <span style={{ opacity: 0.4 }}>·</span>
+                        {streakDays > 0 && (
+                          <>
+                            <span style={{ color: theme.color }}>🔥 {streakDays}d</span>
+                            <span style={{ opacity: 0.4 }}>·</span>
+                          </>
+                        )}
                         <span>{g.memberIds.length} {g.memberIds.length === 1 ? "member" : "members"}</span>
                       </div>
                     </div>

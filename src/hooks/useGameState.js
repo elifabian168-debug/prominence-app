@@ -6,7 +6,7 @@ import { getLevelFromXP, applyDailyCap } from '../utils/xp';
 import { advanceFriendStreaks } from '../utils/social';
 import { getInitialState } from '../utils/state';
 import { SEED_FRIENDS, SEED_POSTS } from '../constants/socialData';
-import { SEED_GROUPS, SEED_GROUP_INVITES, applyGroupActivityTick } from '../constants/groupsData';
+import { SEED_GROUPS, SEED_GROUP_INVITES } from '../constants/groupsData';
 import { TEXT_MID } from '../constants/theme';
 import { fireLocalNotification } from '../utils/notifications';
 
@@ -62,17 +62,19 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
         if (!parsed.posts) parsed.posts = SEED_POSTS;
         if (parsed.lastStreakDay === undefined) parsed.lastStreakDay = null;
-        // Backfill group XP + activity-feed fields for older saved groups.
-        // audienceMode defaults to 'private' for pre-existing Circles since
-        // they were created before the toggle existed.
-        parsed.groups = (parsed.groups || []).map((g) => ({
-          ...g,
-          audienceMode: g.audienceMode ?? "private",
-          groupXP: g.groupXP ?? 0,
-          streakDays: g.streakDays ?? 0,
-          lastActivityDate: g.lastActivityDate ?? null,
-          activityFeed: g.activityFeed ?? [],
-        }));
+        // Backfill Circle fields for older saved groups, and strip the
+        // deleted ones (groupXP, lastActivityDate, activityFeed).
+        // audienceMode defaults to 'private' for Circles created before the
+        // toggle existed.
+        parsed.groups = (parsed.groups || []).map((g) => {
+          const { groupXP: _gxp, lastActivityDate: _lad, activityFeed: _af, ...rest } = g;
+          return {
+            ...rest,
+            audienceMode: rest.audienceMode ?? "private",
+            streakDays: rest.streakDays ?? 0,
+            lastStreakDay: rest.lastStreakDay ?? null,
+          };
+        });
         // Migrate older saved state for new fields
         if (!parsed.weeklyQuests) parsed.weeklyQuests = [];
         if (parsed.lastWeeklyReminderDate === undefined) parsed.lastWeeklyReminderDate = null;
@@ -250,9 +252,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         ...(prev.completedTasks || []),
       ].slice(0, 50),
       friendStreaks: advanceFriendStreaks(prev.friendStreaks, today, prev.friendActiveDays || {}),
-      // Tick each of the user's orders for today's activity. Awards
-      // STREAK_MILESTONE group XP every Nth consecutive active day.
-      groups: applyGroupActivityTick(prev.groups, today),
     };
   };
 
