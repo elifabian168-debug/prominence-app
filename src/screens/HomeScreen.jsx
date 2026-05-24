@@ -1,5 +1,5 @@
 import { Bell, Flame, Calendar, Plus, Sparkles, UserPlus, ChevronRight } from "lucide-react";
-import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 import { getLevelFromXP } from "../utils/xp";
 import TaskCard from "../components/tasks/TaskCard";
@@ -19,7 +19,7 @@ const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
 export default function HomeScreen({
   state, name, levelingUp, xpGains,
   completeTask, completeMainQuest, completeWeeklyQuest,
-  onOpenActions, onOpenLifeStats, onOpenNotifs,
+  onOpenActions, onOpenNotifs,
   onAddWeekly, onCreateQuest,
   posts = [],
   onOpenFeed, onOpenAddFriends,

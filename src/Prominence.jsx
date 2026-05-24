@@ -307,7 +307,6 @@ export default function Prominence() {
                   completeTask={completeTask} completeMainQuest={completeMainQuest}
                   completeWeeklyQuest={completeWeeklyQuest}
                   onOpenActions={openActions}
-                  onOpenLifeStats={() => setShowLifeStats(true)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onAddWeekly={() => openCreateModal("weekly")}
                   onCreateQuest={() => openCreateModal("normal")}
@@ -348,6 +347,9 @@ export default function Prominence() {
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onEditProfile={() => setEditProfileOpen(true)}
                   onOpenNotifications={() => setNotificationsOpen(true)}
+                  onOpenFriends={() => setShowFriends(true)}
+                  onOpenAddFriends={() => setShowAddFriends(true)}
+                  onOpenFriend={setFriendDetail}
                   theme={theme}
                   onToggleTheme={toggleTheme} />
               </div>
