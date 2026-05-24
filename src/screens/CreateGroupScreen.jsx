@@ -102,7 +102,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             ref={nameRef}
             value={name}
             onChange={(e) => setName(e.target.value.slice(0, 32))}
-            placeholder="The Iron Sun"
+            placeholder="Gym · School · Roommates"
             style={inputStyle(name.trim().length >= 3)}
           />
         </Field>

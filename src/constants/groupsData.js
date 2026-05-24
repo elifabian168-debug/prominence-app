@@ -59,10 +59,10 @@ export function getCrestSymbol(seed) {
 export const SEED_GROUPS = [
   {
     id: "g_iron_sun",
-    name: "The Iron Sun",
+    name: "Gym",
     motto: "Move every day.",
     themeColor: "solar",
-    crestSeed: "iron-sun-2026",
+    crestSeed: "gym-2026",
     founderId: "me",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12, // 12 days ago
     memberIds: ["me", "f2", "f1"],
@@ -83,11 +83,11 @@ export const SEED_GROUPS = [
 export const SEED_GROUP_INVITES = [
   {
     groupId: "g_quiet_hand",
-    groupName: "The Quiet Hand",
-    motto: "Stillness, sharpened.",
+    groupName: "Book club",
+    motto: "Read 30 pages a day.",
     themeColor: "onyx",
     audienceMode: "shared",
-    crestSeed: "quiet-hand-2026",
+    crestSeed: "book-club-2026",
     fromName: "Marcus",
     fromId: "f3",
     invitedAt: Date.now() - 1000 * 60 * 60 * 6,
