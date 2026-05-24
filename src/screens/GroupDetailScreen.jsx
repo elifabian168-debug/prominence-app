@@ -108,19 +108,11 @@ export default function GroupDetailScreen({
           <div style={{
             fontFamily: SERIF, fontSize: 32, fontWeight: 500,
             color: TEXT, letterSpacing: "0.02em", lineHeight: 1,
-            marginBottom: 6,
+            marginBottom: 28,
             textShadow: `0 0 24px ${alpha(theme.color, "30")}`,
           }}>
             {group.name}
           </div>
-          {group.motto && (
-            <div style={{
-              fontFamily: SERIF, fontSize: 14, color: TEXT_MID,
-              fontStyle: "italic", marginBottom: 28,
-            }}>
-              {group.motto}
-            </div>
-          )}
 
           <StreakHero status={streakStatus} streakDays={streakDays} themeColor={theme.color} />
         </div>

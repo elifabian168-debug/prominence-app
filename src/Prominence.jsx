@@ -387,9 +387,7 @@ export default function Prominence() {
           <ConfirmDialog
             icon={Users}
             title={`Join ${respondingToInvite.groupName}?`}
-            message={respondingToInvite.motto
-              ? `"${respondingToInvite.motto}" — invited by ${respondingToInvite.fromName}.`
-              : `Invited by ${respondingToInvite.fromName}.`}
+            message={`Invited by ${respondingToInvite.fromName}.`}
             confirmLabel="Join"
             confirmColor={ACCENT}
             onConfirm={() => handleAcceptInvite(respondingToInvite)}

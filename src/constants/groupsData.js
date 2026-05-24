@@ -60,7 +60,6 @@ export const SEED_GROUPS = [
   {
     id: "g_iron_sun",
     name: "Gym",
-    motto: "Move every day.",
     themeColor: "solar",
     crestSeed: "gym-2026",
     founderId: "me",
@@ -84,7 +83,6 @@ export const SEED_GROUP_INVITES = [
   {
     groupId: "g_quiet_hand",
     groupName: "Book club",
-    motto: "Read 30 pages a day.",
     themeColor: "onyx",
     audienceMode: "shared",
     crestSeed: "book-club-2026",

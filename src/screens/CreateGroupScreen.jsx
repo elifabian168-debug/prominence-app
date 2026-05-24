@@ -8,7 +8,6 @@ import GroupCrest from "../components/groups/GroupCrest";
 // Single-step founder flow with live crest preview as the user types.
 export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "balanced" }) {
   const [name, setName] = useState("");
-  const [motto, setMotto] = useState("");
   const [themeKey, setThemeKey] = useState("solar");
   const [audienceMode, setAudienceMode] = useState("private");
   const nameRef = useRef(null);
@@ -88,12 +87,6 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
           }}>
             {name.trim() || <span style={{ color: TEXT_DIM, fontStyle: "italic" }}>Your Circle's name</span>}
           </div>
-          <div style={{
-            fontFamily: SERIF, fontSize: 13, color: TEXT_MID,
-            fontStyle: "italic", minHeight: 18,
-          }}>
-            {motto.trim() || (name.trim() ? "Add a tagline." : "")}
-          </div>
         </div>
 
         {/* Name input */}
@@ -104,16 +97,6 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             onChange={(e) => setName(e.target.value.slice(0, 32))}
             placeholder="Gym · School · Roommates"
             style={inputStyle(name.trim().length >= 3)}
-          />
-        </Field>
-
-        {/* Motto input */}
-        <Field label="Tagline">
-          <input
-            value={motto}
-            onChange={(e) => setMotto(e.target.value.slice(0, 48))}
-            placeholder="Roommates · Run crew · Book club"
-            style={inputStyle(motto.trim().length > 0)}
           />
         </Field>
 
@@ -218,7 +201,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
 
         {/* Submit */}
         <button
-          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), motto: motto.trim(), themeColor: themeKey, audienceMode })}
+          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), themeColor: themeKey, audienceMode })}
           disabled={!canSubmit}
           style={{
             width: "100%", padding: "16px",

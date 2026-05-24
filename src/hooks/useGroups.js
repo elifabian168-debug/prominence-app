@@ -25,7 +25,7 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
   //     co-recipient avatars on posts shared to this Circle.
   //   'shared' — Circle name is visible to all members.
   const createGroup = useCallback(
-    ({ name, motto, themeColor, audienceMode }) => {
+    ({ name, themeColor, audienceMode }) => {
       if (!name?.trim()) return null;
       const id = `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const crestSeed = `${name.trim().toLowerCase().replace(/\s+/g, "-")}-${id}`;
@@ -33,7 +33,6 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
       const next = {
         id,
         name: name.trim(),
-        motto: motto?.trim() || "",
         themeColor: themeColor || "solar",
         audienceMode: audienceMode === "shared" ? "shared" : "private",
         crestSeed,
@@ -96,7 +95,6 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
       const newGroup = {
         id: invite.groupId,
         name: invite.groupName,
-        motto: invite.motto || "",
         themeColor: invite.themeColor || "solar",
         audienceMode: invite.audienceMode === "shared" ? "shared" : "private",
         crestSeed: invite.crestSeed || invite.groupId,
