@@ -12,13 +12,15 @@ export default function ConfirmDialog({ icon: Icon, title, message, confirmLabel
         padding: 24, width: "100%", maxWidth: 360,
         animation: "scaleIn 0.3s cubic-bezier(0.16,1,0.3,1)",
       }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 12,
-          background: `${confirmColor}15`, border: `1px solid ${confirmColor}40`,
-          display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
-        }}>
-          <Icon size={20} color={confirmColor} />
-        </div>
+        {Icon && (
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: `${confirmColor}15`, border: `1px solid ${confirmColor}40`,
+            display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
+          }}>
+            <Icon size={20} color={confirmColor} />
+          </div>
+        )}
         <div style={{ fontSize: 18, color: TEXT, fontWeight: 500, marginBottom: 6, fontFamily: SERIF }}>{title}</div>
         <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.5, marginBottom: 20 }}>{message}</div>
         <div style={{ display: "flex", gap: 8 }}>

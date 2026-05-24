@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, Trash2, Check, RotateCcw } from "lucide-react";
+import { AlertCircle, Trash2, Check, RotateCcw, Users } from "lucide-react";
 
 import { ACCENT, BG, CARD, BORDER_BR, TEXT, TEXT_MID } from "./constants/theme";
 
@@ -99,7 +99,9 @@ export default function Prominence() {
     groups, groupInvites,
     createGroup, inviteFriend, cancelInvite,
     acceptInvite, declineInvite, leaveGroup,
-  } = useGroups(state, setState);
+  } = useGroups(state, setState, {
+    onInviteAccepted: (friend, group) => showToast(`${friend.name} joined ${group.name}`),
+  });
 
   const {
     sendCheer, toggleFriendStreak, addFriend, removeFriend,
@@ -384,6 +386,7 @@ export default function Prominence() {
         {/* ── Circles invite confirmation ── */}
         {respondingToInvite && (
           <ConfirmDialog
+            icon={Users}
             title={`Join ${respondingToInvite.groupName}?`}
             message={respondingToInvite.motto
               ? `"${respondingToInvite.motto}" — invited by ${respondingToInvite.fromName}.`
