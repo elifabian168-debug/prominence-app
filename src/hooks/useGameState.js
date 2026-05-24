@@ -199,6 +199,44 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     };
   };
 
+  // Advance a Circle's streak if the just-created post tips today's distinct
+  // poster count to >= 2. Returns the updated groups array (same reference if
+  // nothing changed). The new post must already be on `nextPosts` so the
+  // count includes it.
+  //
+  // Rule:
+  //   - distinct authors today >= 2 AND lastStreakDay !== today → advance
+  //   - lastStreakDay === yesterday → streakDays + 1
+  //   - otherwise → streakDays = 1
+  //   - first qualifying post of the day sets lastStreakDay = today;
+  //     subsequent posts on the same day are no-ops.
+  const advanceCircleStreaks = (groups, nextPosts, newPost) => {
+    if (!newPost || !newPost.audienceCircleIds?.length) return groups;
+    const today = todayKey();
+    const yesterday = (() => {
+      const d = new Date(`${today}T00:00:00`);
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const affectedIds = new Set(newPost.audienceCircleIds);
+
+    return (groups || []).map((g) => {
+      if (!affectedIds.has(g.id)) return g;
+      if (g.lastStreakDay === today) return g;
+      // Count distinct authors who posted to THIS Circle today.
+      const authorsToday = new Set();
+      for (const p of nextPosts) {
+        if (!(p.audienceCircleIds || []).includes(g.id)) continue;
+        const d = new Date(p.createdAt).toISOString().slice(0, 10);
+        if (d === today) authorsToday.add(p.authorId);
+      }
+      if (authorsToday.size < 2) return g;
+      const continuing = g.lastStreakDay === yesterday;
+      const nextStreak = continuing ? (g.streakDays || 0) + 1 : 1;
+      return { ...g, streakDays: nextStreak, lastStreakDay: today };
+    });
+  };
+
   // Pure reducer: applies an XP award to the given prev state and returns the next state.
   // Reads cap/total from prev (not closure) so it's safe under rapid completions.
   // Side effects (toast, level-up, gain animation) are queued via the `effects` accumulator
@@ -352,11 +390,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       if (!quest || quest.status !== "pending") return prev;
       const post = buildPost("weekly", quest, prev.groups);
       const streakDelta = computeStreakDelta(prev, !!post);
+      const nextPosts = appendPost(prev.posts, post);
       const afterMark = {
         ...prev,
         ...(streakDelta || {}),
         weeklyQuests: prev.weeklyQuests.map(q => q.id === questId ? { ...q, status: "complete", completedAt } : q),
-        posts: appendPost(prev.posts, post),
+        posts: nextPosts,
+        groups: advanceCircleStreaks(prev.groups, nextPosts, post),
       };
       return awardXPReducer(afterMark, quest.xp, quest.category, quest.title, true, questId, effects);
     });
@@ -414,11 +454,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       if (!task || task.status !== "pending") return prev;
       const post = buildPost("task", task, prev.groups);
       const streakDelta = computeStreakDelta(prev, !!post);
+      const nextPosts = appendPost(prev.posts, post);
       const afterMark = {
         ...prev,
         ...(streakDelta || {}),
         tasks: prev.tasks.map(t => t.id === taskId ? { ...t, status: "complete", completedAt } : t),
-        posts: appendPost(prev.posts, post),
+        posts: nextPosts,
+        groups: advanceCircleStreaks(prev.groups, nextPosts, post),
       };
       return awardXPReducer(afterMark, task.xp, task.category, task.title, false, taskId, effects);
     });
@@ -433,11 +475,13 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
       if (!mq || mq.status !== "pending") return prev;
       const post = buildPost("main", mq, prev.groups);
       const streakDelta = computeStreakDelta(prev, !!post);
+      const nextPosts = appendPost(prev.posts, post);
       const afterMark = {
         ...prev,
         ...(streakDelta || {}),
         mainQuest: { ...mq, status: "complete", completedAt },
-        posts: appendPost(prev.posts, post),
+        posts: nextPosts,
+        groups: advanceCircleStreaks(prev.groups, nextPosts, post),
       };
       return awardXPReducer(afterMark, mq.xp, mq.category, mq.title, false, mq.id, effects);
     });

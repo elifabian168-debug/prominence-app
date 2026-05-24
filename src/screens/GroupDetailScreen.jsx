@@ -1,9 +1,30 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass } from "lucide-react";
+import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass, Flame } from "lucide-react";
 import { BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
 import { GROUP_THEMES } from "../constants/groupsData";
-import GroupCrest from "../components/groups/GroupCrest";
+import { todayKey } from "../utils/date";
+
+// Resolve the visual state of a Circle's streak:
+//   fresh   — qualified today (lastStreakDay === today)
+//   at_risk — qualified yesterday, hasn't qualified yet today
+//   lost    — gap is > 1 day, streak is dead but the number lingers
+//   zero    — never started a streak, or solo Circle (can't accrue)
+function getStreakStatus(circle) {
+  const memberCount = (circle.memberIds || []).length;
+  if (memberCount < 2) return "zero_solo";
+  const days = circle.streakDays || 0;
+  if (!circle.lastStreakDay || days === 0) return "zero";
+  const today = todayKey();
+  if (circle.lastStreakDay === today) return "fresh";
+  const yesterday = (() => {
+    const d = new Date(`${today}T00:00:00`);
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  if (circle.lastStreakDay === yesterday) return "at_risk";
+  return "lost";
+}
 
 export default function GroupDetailScreen({
   group,
@@ -36,7 +57,8 @@ export default function GroupDetailScreen({
     [group.memberIds, friends, userName, userArchetype, userWeeklyXP]
   );
 
-  const memberArchetypes = members.map((m) => m.archetype);
+  const streakStatus = getStreakStatus(group);
+  const streakDays = group.streakDays || 0;
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, paddingBottom: 40 }}>
@@ -75,37 +97,32 @@ export default function GroupDetailScreen({
           </button>
         </div>
 
-        {/* Hero — name + tagline. Step 10 replaces the crest with the streak hero. */}
+        {/* Hero — Circle name, tagline, then streak as the dominant number. */}
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center",
-          textAlign: "center", padding: "20px 0 28px",
+          textAlign: "center", padding: "20px 0 36px",
           opacity: enter ? 1 : 0,
           transform: enter ? "translateY(0)" : "translateY(10px)",
           transition: "opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s",
         }}>
-          <GroupCrest
-            seed={group.crestSeed}
-            themeColor={group.themeColor}
-            memberArchetypes={memberArchetypes}
-            size={120}
-            animated
-          />
           <div style={{
-            fontFamily: SERIF, fontSize: 36, fontWeight: 500,
+            fontFamily: SERIF, fontSize: 32, fontWeight: 500,
             color: TEXT, letterSpacing: "0.02em", lineHeight: 1,
-            marginTop: 16, marginBottom: 6,
-            textShadow: `0 0 28px ${alpha(theme.color, "40")}`,
+            marginBottom: 6,
+            textShadow: `0 0 24px ${alpha(theme.color, "30")}`,
           }}>
             {group.name}
           </div>
           {group.motto && (
             <div style={{
-              fontFamily: SERIF, fontSize: 15, color: TEXT_MID,
-              fontStyle: "italic",
+              fontFamily: SERIF, fontSize: 14, color: TEXT_MID,
+              fontStyle: "italic", marginBottom: 28,
             }}>
               {group.motto}
             </div>
           )}
+
+          <StreakHero status={streakStatus} streakDays={streakDays} themeColor={theme.color} />
         </div>
 
         {/* Members */}
@@ -242,6 +259,71 @@ export default function GroupDetailScreen({
           <UserPlus size={14} />
           Invite a Friend
         </button>
+      </div>
+    </div>
+  );
+}
+
+function StreakHero({ status, streakDays, themeColor }) {
+  // Color modes:
+  //   fresh   → flame bright, number in theme color
+  //   at_risk → flame dim, number muted (today hasn't qualified yet)
+  //   lost    → flame dark, number very muted, "STREAK LOST" caption
+  //   zero    → flame dim, "0", hint about how to start
+  //   zero_solo → "0", "Invite someone to start a streak"
+  const palette = (() => {
+    if (status === "fresh")   return { flame: themeColor,            num: themeColor,            label: TEXT_DIM };
+    if (status === "at_risk") return { flame: alpha(themeColor, "70"), num: alpha(themeColor, "B0"), label: TEXT_DIM };
+    if (status === "lost")    return { flame: alpha(TEXT_DIM, "70"), num: alpha(TEXT_DIM, "90"), label: TEXT_DIM };
+    return { flame: TEXT_DIM, num: TEXT_DIM, label: TEXT_DIM };
+  })();
+
+  const showNumber = status !== "zero_solo";
+  const display = status === "zero" || status === "zero_solo" ? 0 : streakDays;
+
+  let caption = "day streak";
+  if (status === "at_risk")     caption = "needs 2 today";
+  if (status === "lost")        caption = "STREAK LOST";
+  if (status === "zero")        caption = "needs 2 today to start";
+  if (status === "zero_solo")   caption = "invite someone to start a streak";
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      gap: 4,
+    }}>
+      <Flame
+        size={36}
+        color={palette.flame}
+        strokeWidth={1.5}
+        style={{
+          filter: status === "fresh" ? `drop-shadow(0 0 16px ${alpha(themeColor, "60")})` : "none",
+          marginBottom: 4,
+          transition: "color 0.4s ease, filter 0.4s ease",
+        }}
+      />
+      {showNumber && (
+        <div style={{
+          fontFamily: SERIF, fontSize: 92, fontWeight: 500,
+          color: palette.num,
+          lineHeight: 1, letterSpacing: "0.01em",
+          textShadow: status === "fresh"
+            ? `0 0 40px ${alpha(themeColor, "40")}`
+            : "none",
+          fontVariantNumeric: "tabular-nums",
+          transition: "color 0.4s ease",
+        }}>
+          {display}
+        </div>
+      )}
+      <div style={{
+        marginTop: 4,
+        fontSize: status === "lost" ? 11 : 10,
+        color: status === "lost" ? alpha(TEXT, "B0") : palette.label,
+        letterSpacing: status === "lost" ? "0.32em" : "0.22em",
+        textTransform: "uppercase", fontWeight: status === "lost" ? 800 : 600,
+      }}>
+        {caption}
       </div>
     </div>
   );
