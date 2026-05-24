@@ -306,15 +306,14 @@ export default function Prominence() {
                 <HomeScreen state={state} name={user.name} levelingUp={levelingUp} xpGains={xpGains}
                   completeTask={completeTask} completeMainQuest={completeMainQuest}
                   completeWeeklyQuest={completeWeeklyQuest}
-                  onOpenActions={openActions} onOpenFriends={() => setShowFriends(true)}
+                  onOpenActions={openActions}
                   onOpenLifeStats={() => setShowLifeStats(true)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onAddWeekly={() => openCreateModal("weekly")}
                   onCreateQuest={() => openCreateModal("normal")}
-                  groups={groups}
-                  groupInvites={groupInvites}
-                  onOpenGroups={() => setActiveTab("circles")}
-                  onOpenCircle={(g) => setGroupDetail(g)} />
+                  posts={posts}
+                  onOpenFeed={() => setActiveTab("feed")}
+                  onOpenAddFriends={() => setShowAddFriends(true)} />
               </div>
             )}
             {activeTab === "feed" && (
