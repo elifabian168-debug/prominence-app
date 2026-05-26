@@ -2,7 +2,7 @@
 // design — Firebase API keys aren't secrets; security is enforced via
 // Firestore Security Rules in the Firebase Console.
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, collection, query as fsQuery, where, getDocs, limit } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query as fsQuery, where, getDocs, limit } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -68,6 +68,27 @@ export async function searchUsers(rawQuery, currentUid) {
 export async function getUserProfile(uid) {
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? snap.data() : null;
+}
+
+// ── Friend requests ───────────────────────────────────────────────────────
+
+export async function sendFriendRequest({ toUid, fromUid, fromName, fromUsername }) {
+  await setDoc(doc(db, "users", toUid, "friendRequests", fromUid), {
+    fromUid,
+    fromName,
+    fromUsername: fromUsername || "",
+    fromInitial: fromName?.[0]?.toUpperCase() ?? "?",
+    createdAt: Date.now(),
+  });
+}
+
+export async function getPendingFriendRequests(myUid) {
+  const snap = await getDocs(collection(db, "users", myUid, "friendRequests"));
+  return snap.docs.map(d => d.data());
+}
+
+export async function respondToFriendRequest(myUid, fromUid) {
+  await deleteDoc(doc(db, "users", myUid, "friendRequests", fromUid));
 }
 
 // Derive a Firestore-safe document ID from a push subscription endpoint.

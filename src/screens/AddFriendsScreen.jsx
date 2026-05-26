@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, Users, X, Plus, Check, Search } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
@@ -23,11 +23,14 @@ function profileToFriend(profile) {
   };
 }
 
-export default function AddFriendsScreen({ state, userName, onBack, onAdd, onInvited }) {
+// onSendRequest(profile) — called for real Firestore users found via search
+// onAdd(friendObj)        — called for contacts added directly (ContactsSheet)
+export default function AddFriendsScreen({ state, userName, onBack, onSendRequest, onAdd, onInvited }) {
   const [query, setQuery]           = useState("");
   const [results, setResults]       = useState([]);
   const [searching, setSearching]   = useState(false);
-  const [adding, setAdding]         = useState(null);
+  const [sending, setSending]       = useState(null);   // uid currently being requested
+  const [sent, setSent]             = useState(new Set()); // uids already requested
   const [inviteOpen, setInviteOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
 
@@ -60,13 +63,15 @@ export default function AddFriendsScreen({ state, userName, onBack, onAdd, onInv
     return () => clearTimeout(debounceRef.current);
   }, [query, existingIds]);
 
-  const handleAdd = (profile) => {
-    setAdding(profile.uid);
-    setTimeout(() => {
-      onAdd(profileToFriend(profile));
-      setAdding(null);
-    }, 280);
-  };
+  const handleSendRequest = useCallback(async (profile) => {
+    setSending(profile.uid);
+    try {
+      await onSendRequest(profile);
+      setSent(prev => new Set([...prev, profile.uid]));
+    } finally {
+      setSending(null);
+    }
+  }, [onSendRequest]);
 
   const showEmpty   = query.trim().length >= 2 && !searching && results.length === 0;
   const showPrompt  = query.trim().length < 2;
@@ -179,20 +184,18 @@ export default function AddFriendsScreen({ state, userName, onBack, onAdd, onInv
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 24 }}>
             {results.map(profile => {
-              const arch = ARCHETYPES[profile.archetype] || ARCHETYPES.balanced;
-              const ArchI = arch.icon;
+              const arch = ARCHETYPES.balanced;
               const initial = profile.name?.[0]?.toUpperCase() ?? "?";
-              const isAdding = adding === profile.uid;
+              const isSending = sending === profile.uid;
+              const isSent    = sent.has(profile.uid) || existingIds.has(profile.uid);
 
               return (
                 <div key={profile.uid} style={{
                   background: CARD,
-                  border: `1px solid ${isAdding ? alpha(ACCENT, "60") : BORDER}`,
+                  border: `1px solid ${isSent ? alpha(ACCENT, "40") : BORDER}`,
                   borderRadius: 14, padding: "12px 14px",
                   display: "flex", alignItems: "center", gap: 12,
-                  opacity: isAdding ? 0.5 : 1,
-                  transform: isAdding ? "translateX(-30px)" : "translateX(0)",
-                  transition: "all 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
+                  transition: "border-color 0.25s ease",
                 }}>
                   {/* Avatar */}
                   <div style={{
@@ -212,27 +215,32 @@ export default function AddFriendsScreen({ state, userName, onBack, onAdd, onInv
                         <span style={{ fontSize: 11, color: TEXT_DIM }}>@{profile.username}</span>
                       )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                      <ArchI size={9} color={arch.color} />
-                      <span style={{ fontSize: 10, color: TEXT_DIM }}>New member</span>
+                    <div style={{ fontSize: 10, color: TEXT_DIM, marginTop: 2 }}>
+                      {isSent ? "Request sent" : "On Prominence"}
                     </div>
                   </div>
 
-                  {/* Add button */}
+                  {/* Request button */}
                   <button
-                    onClick={() => handleAdd(profile)}
-                    disabled={isAdding}
+                    onClick={() => !isSent && !isSending && handleSendRequest(profile)}
+                    disabled={isSent || isSending}
                     style={{
                       padding: "8px 16px", borderRadius: 99,
-                      background: isAdding ? alpha(ACCENT, "30") : ACCENT,
-                      color: BG, border: "none",
+                      background: isSent ? alpha(ACCENT, "15") : isSending ? alpha(ACCENT, "30") : ACCENT,
+                      color: isSent ? ACCENT : BG,
+                      border: `1px solid ${isSent ? alpha(ACCENT, "40") : "transparent"}`,
                       fontSize: 12, fontWeight: 600, letterSpacing: "0.04em",
-                      cursor: isAdding ? "default" : "pointer", flexShrink: 0,
+                      cursor: isSent || isSending ? "default" : "pointer", flexShrink: 0,
                       display: "flex", alignItems: "center", gap: 4,
+                      transition: "all 0.25s ease",
                     }}
                   >
-                    {isAdding ? <Check size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={2.5} />}
-                    {isAdding ? "ADDED" : "ADD"}
+                    {isSent
+                      ? <><Check size={12} strokeWidth={3} /> SENT</>
+                      : isSending
+                        ? "…"
+                        : <><Plus size={12} strokeWidth={2.5} /> ADD</>
+                    }
                   </button>
                 </div>
               );

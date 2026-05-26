@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, Plus, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail } from "lucide-react";
+import { ChevronLeft, Plus, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail, UserPlus, Check, X } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 
 const WEEKLY_ACCENT = "#7CA9F2";
@@ -55,7 +55,7 @@ const RANK_THEMES = {
   3: { color: BRONZE, label: "3rd", icon: Award,  shadow: "40", border: "55" },
 };
 
-export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd, onOpenGroups, groupCount = 0, pendingInviteCount = 0 }) {
+export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd, onOpenGroups, groupCount = 0, pendingInviteCount = 0, friendRequests = [], onAcceptRequest, onDeclineRequest }) {
   const [tab, setTab] = useState("activity");
   const friends = state.friends || [];
   const cheersGiven = state.cheersGiven || {};
@@ -163,6 +163,70 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
             Open →
           </div>
         </button>
+      )}
+
+      {/* Friend requests */}
+      {friendRequests.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{
+            fontSize: 10, color: TEXT_DIM, letterSpacing: "0.24em",
+            textTransform: "uppercase", fontWeight: 700, marginBottom: 10,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <UserPlus size={11} color={ACCENT} />
+            <span style={{ color: ACCENT }}>Friend requests · {friendRequests.length}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {friendRequests.map(req => (
+              <div key={req.fromUid} style={{
+                background: `linear-gradient(90deg, ${alpha(ACCENT, "08")}, ${CARD})`,
+                border: `1px solid ${alpha(ACCENT, "35")}`,
+                borderRadius: 14, padding: "12px 14px",
+                display: "flex", alignItems: "center", gap: 12,
+                animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both",
+              }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+                  background: alpha(ACCENT, "15"), border: `1px solid ${alpha(ACCENT, "40")}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 17, color: ACCENT }}>{req.fromInitial}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{req.fromName}</div>
+                  {req.fromUsername && (
+                    <div style={{ fontSize: 11, color: TEXT_DIM }}>@{req.fromUsername}</div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => onDeclineRequest?.(req)}
+                    style={{
+                      width: 34, height: 34, borderRadius: "50%",
+                      background: "transparent", border: `1px solid ${BORDER_BR}`,
+                      color: TEXT_DIM, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                  <button
+                    onClick={() => onAcceptRequest?.(req)}
+                    style={{
+                      width: 34, height: 34, borderRadius: "50%",
+                      background: ACCENT, border: "none",
+                      color: BG, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: `0 0 12px ${alpha(ACCENT, "35")}`,
+                    }}
+                  >
+                    <Check size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Tab switcher */}

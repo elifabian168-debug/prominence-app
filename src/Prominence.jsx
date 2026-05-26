@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Trash2, Check, RotateCcw, Users } from "lucide-react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, getUserProfile } from "./utils/firebase";
+import { auth, getUserProfile, sendFriendRequest, getPendingFriendRequests, respondToFriendRequest } from "./utils/firebase";
 import { STORAGE_USER } from "./constants/storage";
 
 import { ACCENT, BG, CARD, BORDER_BR, TEXT, TEXT_MID } from "./constants/theme";
@@ -81,6 +81,50 @@ export default function Prominence() {
       setTimeout(() => setXpGains(g => g.filter(x => x.id !== gain.id)), 1400);
     },
   });
+
+  // ── Friend requests ───────────────────────────────────────────────────────
+  const [pendingFriendRequests, setPendingFriendRequests] = useState([]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    getPendingFriendRequests(user.uid)
+      .then(setPendingFriendRequests)
+      .catch(() => {});
+  }, [user?.uid]);
+
+  const handleSendFriendRequest = async (profile) => {
+    await sendFriendRequest({
+      toUid: profile.uid,
+      fromUid: user.uid,
+      fromName: user.name,
+      fromUsername: user.username || "",
+    });
+    showToast(`Request sent to ${profile.name}`);
+  };
+
+  const handleAcceptFriendRequest = async (req) => {
+    try {
+      await respondToFriendRequest(user.uid, req.fromUid);
+      addFriend({
+        id: req.fromUid,
+        name: req.fromName,
+        username: req.fromUsername,
+        initial: req.fromInitial,
+        archetype: "balanced",
+        totalXP: 0, weeklyXP: 0, streak: 0,
+        categoryXP: { fitness: 0, school: 0, life: 0, work: 0, mind: 0 },
+      });
+      setPendingFriendRequests(prev => prev.filter(r => r.fromUid !== req.fromUid));
+      showToast(`${req.fromName} added as a friend`);
+    } catch { showToast("Something went wrong", FAIL_COLOR); }
+  };
+
+  const handleDeclineFriendRequest = async (req) => {
+    try {
+      await respondToFriendRequest(user.uid, req.fromUid);
+      setPendingFriendRequests(prev => prev.filter(r => r.fromUid !== req.fromUid));
+    } catch {}
+  };
 
   // ── Auth state ───────────────────────────────────────────────────────────
   const [authLoading, setAuthLoading] = useState(true);
@@ -397,7 +441,7 @@ export default function Prominence() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const userLevel = getLevelFromXP(state.totalXP).level;
-  const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
+  const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length + pendingFriendRequests.length;
 
   const screenStack = (
     <>
@@ -426,6 +470,7 @@ export default function Prominence() {
           <div style={{ animation: "screenIn 0.3s ease" }}>
             <AddFriendsScreen state={state} userName={user.name}
               onBack={() => setShowAddFriends(false)}
+              onSendRequest={handleSendFriendRequest}
               onAdd={addFriend}
               onInvited={(contact) => showToast(`Invite sent to ${contact.name}`)} />
           </div>
@@ -478,7 +523,10 @@ export default function Prominence() {
               onOpenAdd={() => setShowAddFriends(true)}
               onOpenGroups={() => { setShowFriends(false); setActiveTab("circles"); }}
               groupCount={groups.length}
-              pendingInviteCount={groupInvites.length} />
+              pendingInviteCount={groupInvites.length}
+              friendRequests={pendingFriendRequests}
+              onAcceptRequest={handleAcceptFriendRequest}
+              onDeclineRequest={handleDeclineFriendRequest} />
           </div>
         ) : (
           <>
@@ -603,6 +651,9 @@ export default function Prominence() {
         <NotificationCenterSheet open={notifCenterOpen}
           notifications={state.cheersReceived || []}
           friends={state.friends || []}
+          friendRequests={pendingFriendRequests}
+          onAcceptRequest={handleAcceptFriendRequest}
+          onDeclineRequest={handleDeclineFriendRequest}
           onClose={() => { setNotifCenterOpen(false); markAllNotificationsRead(); }}
           onDismiss={dismissNotification}
           onOpenFriend={(f) => { setNotifCenterOpen(false); setFriendDetail(f); }} />
