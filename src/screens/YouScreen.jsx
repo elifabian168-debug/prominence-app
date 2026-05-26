@@ -6,6 +6,7 @@ import { getLevelFromXP, formatXP } from "../utils/xp";
 import { getArchetype } from "../utils/archetype";
 import { todayKey } from "../utils/date";
 import { getRoutinePreset } from "../constants/routinesData";
+import { useViewport } from "../hooks/useViewport";
 import SettingsRow from "../components/ui/SettingsRow";
 import BottomSheet from "../components/ui/BottomSheet";
 
@@ -47,6 +48,7 @@ export default function YouScreen({
   onOpenFriends, onOpenAddFriends, onOpenFriend,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { isDesktop } = useViewport();
 
   const { totalXP, statXP = {}, streak = 0, longestStreak = 0, posts = [], friends = [], notifications = {}, routines = [], routineXP = 0 } = state;
   const { level, xpIntoLevel, xpForNextLevel, progress } = getLevelFromXP(totalXP);
@@ -153,6 +155,14 @@ export default function YouScreen({
           )}
         </div>
 
+        {/* Below the hero: left column = identity/numbers, right column =
+            activity-over-time. On mobile this becomes a single stacked column. */}
+        <div style={isDesktop ? {
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          columnGap: 24,
+        } : {}}>
+        <div>
         {/* Level */}
         <SectionHeader label="Level" />
         <div style={{
@@ -351,6 +361,8 @@ export default function YouScreen({
             </div>
           )}
         </div>
+        </div>
+        <div>
 
         {/* Streak */}
         <SectionHeader label="Streak" />
@@ -416,6 +428,8 @@ export default function YouScreen({
             <RoutinesSummary routines={routines} routineXP={routineXP} />
           </>
         )}
+        </div>
+        </div>
       </div>
 
       {/* Settings sheet */}

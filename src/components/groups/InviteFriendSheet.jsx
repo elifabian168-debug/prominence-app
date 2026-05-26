@@ -2,6 +2,7 @@ import { X, UserPlus } from "lucide-react";
 import { BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, SERIF, alpha } from "../../constants/theme";
 import { ARCHETYPES } from "../../constants/categories";
 import { GROUP_THEMES } from "../../constants/groupsData";
+import { useViewport } from "../../hooks/useViewport";
 
 // ── InviteFriendSheet ──
 // Bottom sheet to pick a friend (who isn't already a member or invited).
@@ -15,6 +16,7 @@ export default function InviteFriendSheet({
   onAddNew,
   onClose,
 }) {
+  const { isDesktop } = useViewport();
   if (!open) return null;
 
   const memberIds = new Set(group?.memberIds || []);
@@ -31,7 +33,10 @@ export default function InviteFriendSheet({
         background: alpha(BG, "C0"),
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        display: "flex",
+        alignItems: isDesktop ? "center" : "flex-end",
+        justifyContent: "center",
+        padding: isDesktop ? 24 : 0,
         animation: "fadeIn 0.25s ease",
       }}
     >
@@ -40,22 +45,25 @@ export default function InviteFriendSheet({
         style={{
           width: "100%", maxWidth: 480,
           background: CARD,
+          borderRadius: isDesktop ? 20 : 0,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           border: `1px solid ${BORDER}`,
-          borderBottom: "none",
+          borderBottom: isDesktop ? `1px solid ${BORDER}` : "none",
           padding: "20px 20px 32px",
           maxHeight: "78vh",
           overflowY: "auto",
-          animation: "fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
-          boxShadow: `0 -20px 60px ${alpha("#000", "40")}`,
+          animation: isDesktop ? "fadeIn 0.25s ease" : "fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+          boxShadow: isDesktop ? `0 20px 60px ${alpha("#000", "40")}` : `0 -20px 60px ${alpha("#000", "40")}`,
         }}
       >
-        {/* Handle */}
-        <div style={{
-          width: 40, height: 4, borderRadius: 2,
-          background: BORDER,
-          margin: "0 auto 18px",
-        }} />
+        {/* Handle (mobile only) */}
+        {!isDesktop && (
+          <div style={{
+            width: 40, height: 4, borderRadius: 2,
+            background: BORDER,
+            margin: "0 auto 18px",
+          }} />
+        )}
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>

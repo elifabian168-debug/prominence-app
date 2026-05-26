@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { GROUP_THEMES } from "../constants/groupsData";
+import { useViewport } from "../hooks/useViewport";
 
 const formatRelativeShort = (ts) => {
   if (!ts) return "";
@@ -45,6 +46,7 @@ export default function GroupsScreen({
   onBack,
 }) {
   const [enter, setEnter] = useState(false);
+  const { isDesktop } = useViewport();
   useEffect(() => { const t = setTimeout(() => setEnter(true), 30); return () => clearTimeout(t); }, []);
 
   return (
@@ -178,7 +180,9 @@ export default function GroupsScreen({
               No Circles yet. Create one to begin.
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={isDesktop ? {
+              display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12,
+            } : { display: "flex", flexDirection: "column", gap: 12 }}>
               {groups.map((g, i) => {
                 const theme = GROUP_THEMES[g.themeColor] || GROUP_THEMES.solar;
                 const streakDays = g.streakDays || 0;

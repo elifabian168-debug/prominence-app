@@ -9,12 +9,16 @@ import { useGameState } from "./hooks/useGameState";
 import { useGroups } from "./hooks/useGroups";
 import { useFriends } from "./hooks/useFriends";
 import { usePosts } from "./hooks/usePosts";
+import { useViewport } from "./hooks/useViewport";
 import { getInitialState } from "./utils/state";
 import { useTheme } from "./hooks/useTheme";
 import { getArchetype } from "./utils/archetype";
+import { getLevelFromXP } from "./utils/xp";
 
 import Onboarding from "./components/onboarding/Onboarding";
 import TabBar from "./components/ui/TabBar";
+import Sidebar from "./components/ui/Sidebar";
+import DesktopTopBar from "./components/ui/DesktopTopBar";
 import ConfirmDialog from "./components/ui/ConfirmDialog";
 import LevelUpMoment from "./components/moments/LevelUpMoment";
 import TaskCreateModal from "./components/tasks/TaskCreateModal";
@@ -47,6 +51,7 @@ export default function Prominence() {
   const { toast, showToast } = useToast();
   const { undoAction, setUndoAction } = useUndoAction();
   const { theme, toggleTheme } = useTheme();
+  const { isDesktop } = useViewport();
 
   const [showLevelUp, setShowLevelUp]     = useState(null);
   const [levelingUp, setLevelingUp]       = useState(false);
@@ -283,6 +288,20 @@ export default function Prominence() {
     showToast(`${g.name} dissolved`);
   };
 
+  // Sidebar nav (desktop) must close any open overlays — otherwise clicking
+  // e.g. "Circles" while the Friends overlay is open just changes the
+  // active tab underneath and the UI appears frozen.
+  const goToTab = (tab) => {
+    setActiveTab(tab);
+    setShowFriends(false);
+    setShowAddFriends(false);
+    setShowLifeStats(false);
+    setShowRoutines(false);
+    setFriendDetail(null);
+    setGroupDetail(null);
+    setCreatingGroup(false);
+  };
+
   const handleKickMember = (group, member) => setConfirmKick({ group, member });
   const handleConfirmKick = () => {
     const { group, member } = confirmKick;
@@ -292,10 +311,11 @@ export default function Prominence() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div className="app-atmos" style={{ background: BG, minHeight: "100vh", color: TEXT, paddingBottom: 90 }}>
-      <div className="app-page" style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
+  const userLevel = getLevelFromXP(state.totalXP).level;
+  const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
 
+  const screenStack = (
+    <>
         {showRoutines ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
             <RoutinesScreen
@@ -371,7 +391,7 @@ export default function Prominence() {
               onOpenFriend={setFriendDetail}
               onCheer={sendCheer}
               onOpenAdd={() => setShowAddFriends(true)}
-              onOpenGroups={() => setActiveTab("circles")}
+              onOpenGroups={() => { setShowFriends(false); setActiveTab("circles"); }}
               groupCount={groups.length}
               pendingInviteCount={groupInvites.length} />
           </div>
@@ -386,6 +406,7 @@ export default function Prominence() {
                   completeRoutine={completeRoutine}
                   onOpenActions={openActions}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
+                  onOpenFriends={() => setShowFriends(true)}
                   onAddWeekly={() => openCreateModal("weekly")}
                   onCreateQuest={() => openCreateModal("normal")}
                   onOpenRoutines={() => setShowRoutines(true)}
@@ -437,10 +458,51 @@ export default function Prominence() {
           </>
         )}
 
-        {showOverlayNav && (
-          <TabBar activeTab={activeTab} onTabChange={setActiveTab} onAdd={() => openCreateModal("normal")} />
-        )}
+    </>
+  );
 
+  return (
+    <div className="app-atmos" style={{
+      background: BG, minHeight: "100vh", color: TEXT,
+      paddingBottom: isDesktop ? 0 : 90,
+    }}>
+      {isDesktop ? (
+        <div style={{
+          display: "grid", gridTemplateColumns: "240px 1fr",
+          minHeight: "100vh", position: "relative", zIndex: 1,
+        }}>
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={goToTab}
+            level={userLevel}
+            streak={state.streak}
+            onAdd={() => openCreateModal("normal")}
+          />
+          <main style={{ minHeight: "100vh", position: "relative" }}>
+            <DesktopTopBar
+              unreadNotifs={unreadNotifs}
+              onOpenNotifs={() => setNotifCenterOpen(true)}
+              onOpenFriends={() => setShowFriends(true)}
+            />
+            <div className="app-page" style={{
+              maxWidth: 960, margin: "0 auto",
+              padding: "0 24px 32px",
+              position: "relative", zIndex: 1,
+            }}>
+              {screenStack}
+            </div>
+          </main>
+        </div>
+      ) : (
+        <div className="app-page" style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          {screenStack}
+          {showOverlayNav && (
+            <TabBar activeTab={activeTab} onTabChange={setActiveTab} onAdd={() => openCreateModal("normal")} />
+          )}
+        </div>
+      )}
+
+      <div>
         <TaskCreateModal open={modalOpen} onClose={() => setModalOpen(false)}
           onCreate={onCreateTask} streak={state.streak}
           weeklyCategoriesTaken={weeklyCategoriesTaken}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Bell, UserPlus, Sparkles, MessageCircle, Send, Trash2 } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
+import { useViewport } from "../hooks/useViewport";
 
 const formatRelative = (ts) => {
   const mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
@@ -85,6 +86,7 @@ export default function FeedScreen({
   onOpenNotifs,
   onOpenFriends,
 }) {
+  const { isDesktop } = useViewport();
   const unreadNotifs = (state.cheersReceived || []).filter((n) => !n.read).length;
   const [filter, setFilter] = useState("all");
 
@@ -101,7 +103,8 @@ export default function FeedScreen({
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, paddingBottom: 40 }}>
-      {/* Header */}
+      {/* Header — hidden on desktop because DesktopTopBar handles title + bell. */}
+      {!isDesktop && (
       <div style={{
         padding: "20px 20px 12px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -138,6 +141,7 @@ export default function FeedScreen({
           )}
         </button>
       </div>
+      )}
 
       {/* Filter chips */}
       {chips.length > 1 && (

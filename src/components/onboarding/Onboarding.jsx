@@ -3,6 +3,7 @@ import { ArrowRight, Share2, Check } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../../constants/theme";
 import { CATEGORIES } from "../../constants/categories";
 import { calculateTaskXP } from "../../utils/xp";
+import Logo from "../ui/Logo";
 
 // ── Onboarding ──
 // Three screens, ~1 minute total. No archetype picker, no XP explainer,
@@ -120,12 +121,19 @@ function NameStep({ name, onChange, onNext }) {
 
   return (
     <div style={{ animation: "fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+      {/* Brand mark — splash-sized logo above the welcome label */}
+      <div style={{
+        display: "flex", justifyContent: "center",
+        marginBottom: 24,
+      }}>
+        <Logo size={96} />
+      </div>
       <div style={{
         fontSize: 10, color: TEXT_DIM,
         letterSpacing: "0.4em", textTransform: "uppercase", fontWeight: 700,
         marginBottom: 10,
       }}>
-        Welcome
+        Welcome to Prominence
       </div>
       <h1 style={{
         fontFamily: SERIF, fontSize: 38, fontWeight: 500,

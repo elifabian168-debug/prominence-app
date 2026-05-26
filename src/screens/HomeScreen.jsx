@@ -1,8 +1,10 @@
-import { Bell, Flame, Calendar, Plus, Sparkles, UserPlus, ChevronRight, Check } from "lucide-react";
+import { Bell, Flame, Calendar, Plus, Sparkles, UserPlus, ChevronRight, Check, Users } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 import { getLevelFromXP } from "../utils/xp";
 import { ROUTINE_XP_DAILY_CAP, getRoutinePreset } from "../constants/routinesData";
+import { useViewport } from "../hooks/useViewport";
+import Logo from "../components/ui/Logo";
 import TaskCard from "../components/tasks/TaskCard";
 import WeeklyQuestCard from "../components/tasks/WeeklyQuestCard";
 
@@ -21,12 +23,13 @@ export default function HomeScreen({
   state, name, levelingUp, xpGains,
   completeTask, completeMainQuest, completeWeeklyQuest,
   completeRoutine,
-  onOpenActions, onOpenNotifs,
+  onOpenActions, onOpenNotifs, onOpenFriends,
   onAddWeekly, onCreateQuest,
   onOpenRoutines,
   posts = [],
   onOpenFeed, onOpenAddFriends,
 }) {
+  const { isDesktop } = useViewport();
   const unreadNotifs = (state.cheersReceived || []).filter(n => !n.read).length;
   const { totalXP, tasks, mainQuest, streak } = state;
   // Weekly quests stay on Home for their full 7-day window — completed ones
@@ -70,10 +73,28 @@ export default function HomeScreen({
   return (
     <div style={{ padding: "20px 20px 0", position: "relative" }}>
 
-      {/* Top status row: date + bell + streak */}
+      {/* Top status row: logo + date (left) · friends + bell + streak (right).
+          On desktop, the bell + friends button live in DesktopTopBar so we
+          hide them here to avoid duplicating them. */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.22em", textTransform: "uppercase" }}>{today}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Logo size={22} />
+          <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.22em", textTransform: "uppercase" }}>{today}</div>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {!isDesktop && onOpenFriends && (
+            <button onClick={onOpenFriends}
+              aria-label="Friends"
+              style={{
+                position: "relative", width: 34, height: 34, borderRadius: 10,
+                background: CARD, border: `1px solid ${BORDER}`,
+                color: TEXT_MID, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+              <Users size={14} />
+            </button>
+          )}
+          {!isDesktop && (
           <button onClick={onOpenNotifs}
             aria-label={`Notifications${unreadNotifs > 0 ? `, ${unreadNotifs} unread` : ""}`}
             style={{
@@ -100,6 +121,7 @@ export default function HomeScreen({
               }}>{unreadNotifs > 9 ? "9+" : unreadNotifs}</div>
             )}
           </button>
+          )}
           <div style={{
             display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", borderRadius: 99,
             background: streak > 0 ? alpha(ACCENT, "10") : CARD,
@@ -240,7 +262,11 @@ export default function HomeScreen({
         </div>
       )}
 
-      {/* Today's Quests */}
+      {/* Today's Quests + Routines — single column on mobile, side-by-side on desktop */}
+      <div style={isDesktop ? {
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20,
+        alignItems: "start",
+      } : {}}>
       <div style={{ marginBottom: 26 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 10, color: TEXT_MID, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 600 }}>Today's Quests</div>
@@ -301,6 +327,7 @@ export default function HomeScreen({
         completeRoutine={completeRoutine}
         onOpenRoutines={onOpenRoutines}
       />
+      </div>
     </div>
   );
 }
