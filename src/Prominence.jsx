@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertCircle, Trash2, Check, RotateCcw, Users } from "lucide-react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, getUserProfile } from "./utils/firebase";
+import { STORAGE_USER } from "./constants/storage";
 
 import { ACCENT, BG, CARD, BORDER_BR, TEXT, TEXT_MID } from "./constants/theme";
 
@@ -40,6 +43,8 @@ import InviteFriendSheet from "./components/groups/InviteFriendSheet";
 import TransferOwnershipSheet from "./components/groups/TransferOwnershipSheet";
 import CircleSettingsSheet from "./components/groups/CircleSettingsSheet";
 
+import WelcomeScreen from "./screens/WelcomeScreen";
+import LoginScreen from "./screens/LoginScreen";
 import EditProfileSheet from "./sheets/EditProfileSheet";
 import NotificationsSheet from "./sheets/NotificationsSheet";
 import NotificationCenterSheet from "./sheets/NotificationCenterSheet";
@@ -76,6 +81,38 @@ export default function Prominence() {
       setTimeout(() => setXpGains(g => g.filter(x => x.id !== gain.id)), 1400);
     },
   });
+
+  // ── Auth state ───────────────────────────────────────────────────────────
+  const [authLoading, setAuthLoading] = useState(true);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  // 'welcome' | 'login' | 'signup' | null (null = show app)
+  const [authScreen, setAuthScreen] = useState(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      if (!fbUser) {
+        setAuthLoading(false);
+        setAuthScreen(prev => prev === "signup" ? "signup" : "welcome");
+        return;
+      }
+      // Firebase user exists — check if we have a local profile
+      const localUser = (() => {
+        try { const s = localStorage.getItem(STORAGE_USER); return s ? JSON.parse(s) : null; } catch { return null; }
+      })();
+      if (!localUser) {
+        // Restore profile from Firestore (e.g. new device)
+        try {
+          const profile = await getUserProfile(fbUser.uid);
+          if (profile?.onboardingComplete) {
+            setUser({ name: profile.name, username: profile.username, uid: profile.uid, email: profile.email, createdAt: profile.createdAt });
+          }
+        } catch {}
+      }
+      setAuthLoading(false);
+      setAuthScreen(prev => prev === "signup" ? "signup" : null);
+    });
+  }, [setUser]);
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab]               = useState("home");
@@ -222,9 +259,57 @@ export default function Prominence() {
 
   const openCreateModal = (mode = "normal") => { setModalMode(mode); setModalOpen(true); };
 
-  // ── Onboarding guard ──────────────────────────────────────────────────────
-  if (!user) {
-    return <Onboarding onComplete={(u, firstQuest) => { setUser(u); setState(getInitialState(firstQuest)); }} />;
+  // ── Auth / onboarding gate ────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div style={{
+        background: "var(--bg)", minHeight: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: "50%",
+          border: "2px solid var(--border)",
+          borderTopColor: "var(--accent)",
+          animation: "spin 0.8s linear infinite",
+        }} />
+      </div>
+    );
+  }
+
+  if (authScreen === "welcome") {
+    return (
+      <WelcomeScreen
+        onSignUp={() => setAuthScreen("signup")}
+        onLogin={() => setAuthScreen("login")}
+      />
+    );
+  }
+
+  if (authScreen === "login") {
+    return (
+      <LoginScreen
+        onBack={() => setAuthScreen("welcome")}
+        onSuccess={(fbUser, profile) => {
+          setFirebaseUser(fbUser);
+          if (profile?.onboardingComplete) {
+            setUser({ name: profile.name, username: profile.username, uid: profile.uid, email: profile.email, createdAt: profile.createdAt });
+          }
+          setAuthScreen(null);
+        }}
+      />
+    );
+  }
+
+  if (authScreen === "signup" || !user) {
+    return (
+      <Onboarding
+        onComplete={(u, firstQuest) => {
+          setUser(u);
+          setState(getInitialState(firstQuest));
+          setAuthScreen(null);
+        }}
+      />
+    );
   }
 
   const showOverlayNav =
@@ -675,7 +760,7 @@ export default function Prominence() {
             icon={RotateCcw} title="Reset all progress?"
             message="This cannot be undone. All XP, quests, and stats will be cleared."
             confirmLabel="Reset" confirmColor={FAIL_COLOR}
-            onConfirm={() => { resetAll(); setConfirmReset(false); }}
+            onConfirm={() => { resetAll(); setConfirmReset(false); signOut(auth); }}
             onCancel={() => setConfirmReset(false)} />
         )}
 
