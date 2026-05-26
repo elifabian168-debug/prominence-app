@@ -24,8 +24,11 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
   //   'private' (default) — Circle name is creator-only. Members see only
   //     co-recipient avatars on posts shared to this Circle.
   //   'shared' — Circle name is visible to all members.
+  // invitePolicy controls who can send invites:
+  //   'owner' (default) — only the founder can invite or change settings.
+  //   'anyone' — any member can invite. Settings remain owner-only.
   const createGroup = useCallback(
-    ({ name, themeColor, audienceMode }) => {
+    ({ name, themeColor, audienceMode, invitePolicy }) => {
       if (!name?.trim()) return null;
       const id = `g_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const crestSeed = `${name.trim().toLowerCase().replace(/\s+/g, "-")}-${id}`;
@@ -35,6 +38,7 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
         name: name.trim(),
         themeColor: themeColor || "solar",
         audienceMode: audienceMode === "shared" ? "shared" : "private",
+        invitePolicy: invitePolicy === "anyone" ? "anyone" : "owner",
         crestSeed,
         founderId: "me",
         createdAt: now,
@@ -50,23 +54,35 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
   );
 
   // ── Invite a friend to a Circle
+  // Enforces invitePolicy: 'owner' means only the founder can invite.
+  // Returns true on success, false if blocked by policy (so the caller can toast).
   const inviteFriend = useCallback(
     (groupId, friendId) => {
-      setState((prev) => ({
-        ...prev,
-        groups: (prev.groups || []).map((g) => {
-          if (g.id !== groupId) return g;
-          if (g.memberIds.includes(friendId)) return g;
-          if (g.pendingInvites.some((i) => i.friendId === friendId)) return g;
-          return {
-            ...g,
-            pendingInvites: [
-              ...g.pendingInvites,
-              { friendId, invitedBy: "me", invitedAt: Date.now() },
-            ],
-          };
-        }),
-      }));
+      let allowed = true;
+      setState((prev) => {
+        const g = (prev.groups || []).find((x) => x.id === groupId);
+        if (!g) return prev;
+        if ((g.invitePolicy || "owner") === "owner" && g.founderId !== "me") {
+          allowed = false;
+          return prev;
+        }
+        return {
+          ...prev,
+          groups: prev.groups.map((grp) => {
+            if (grp.id !== groupId) return grp;
+            if (grp.memberIds.includes(friendId)) return grp;
+            if (grp.pendingInvites.some((i) => i.friendId === friendId)) return grp;
+            return {
+              ...grp,
+              pendingInvites: [
+                ...grp.pendingInvites,
+                { friendId, invitedBy: "me", invitedAt: Date.now() },
+              ],
+            };
+          }),
+        };
+      });
+      return allowed;
     },
     [setState]
   );
@@ -132,11 +148,65 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
   );
 
   // ── Leave a Circle
+  // For the founder, the caller is expected to either transfer ownership first
+  // (via transferOwnership) or accept dissolution (when alone). This hook is
+  // unopinionated: it just removes the current user from the roster.
   const leaveGroup = useCallback(
     (groupId) => {
       setState((prev) => ({
         ...prev,
         groups: (prev.groups || []).filter((g) => g.id !== groupId),
+      }));
+    },
+    [setState]
+  );
+
+  // ── Kick a member (owner-only)
+  // No-op if the caller isn't the founder, or if targeting the founder themselves.
+  const kickMember = useCallback(
+    (groupId, memberId) => {
+      setState((prev) => ({
+        ...prev,
+        groups: (prev.groups || []).map((g) => {
+          if (g.id !== groupId) return g;
+          if (g.founderId !== "me") return g;
+          if (memberId === g.founderId) return g;
+          if (!g.memberIds.includes(memberId)) return g;
+          return { ...g, memberIds: g.memberIds.filter((id) => id !== memberId) };
+        }),
+      }));
+    },
+    [setState]
+  );
+
+  // ── Transfer ownership to another member (owner-only)
+  // Updates founderId. Caller usually pairs this with leaveGroup to step down.
+  const transferOwnership = useCallback(
+    (groupId, newOwnerId) => {
+      setState((prev) => ({
+        ...prev,
+        groups: (prev.groups || []).map((g) => {
+          if (g.id !== groupId) return g;
+          if (g.founderId !== "me") return g;
+          if (!g.memberIds.includes(newOwnerId)) return g;
+          return { ...g, founderId: newOwnerId };
+        }),
+      }));
+    },
+    [setState]
+  );
+
+  // ── Change invite policy (owner-only)
+  const setInvitePolicy = useCallback(
+    (groupId, policy) => {
+      const next = policy === "anyone" ? "anyone" : "owner";
+      setState((prev) => ({
+        ...prev,
+        groups: (prev.groups || []).map((g) => {
+          if (g.id !== groupId) return g;
+          if (g.founderId !== "me") return g;
+          return { ...g, invitePolicy: next };
+        }),
       }));
     },
     [setState]
@@ -212,6 +282,9 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
       acceptInvite,
       declineInvite,
       leaveGroup,
+      kickMember,
+      transferOwnership,
+      setInvitePolicy,
     }),
     [
       groups,
@@ -223,6 +296,9 @@ export function useGroups(state, setState, { onInviteAccepted } = {}) {
       acceptInvite,
       declineInvite,
       leaveGroup,
+      kickMember,
+      transferOwnership,
+      setInvitePolicy,
     ]
   );
 }

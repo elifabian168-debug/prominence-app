@@ -67,6 +67,7 @@ export const SEED_GROUPS = [
     memberIds: ["me", "f2", "f1"],
     pendingInvites: [],
     audienceMode: "shared",
+    invitePolicy: "owner",
     streakDays: 5,
     lastStreakDay: (() => {
       // Yesterday — so the streak is "at risk" until the user posts today.

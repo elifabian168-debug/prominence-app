@@ -5,6 +5,7 @@ import { ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP, formatXP } from "../utils/xp";
 import { getArchetype } from "../utils/archetype";
 import { todayKey } from "../utils/date";
+import { getRoutinePreset } from "../constants/routinesData";
 import SettingsRow from "../components/ui/SettingsRow";
 import BottomSheet from "../components/ui/BottomSheet";
 
@@ -47,7 +48,7 @@ export default function YouScreen({
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const { totalXP, statXP = {}, streak = 0, longestStreak = 0, posts = [], friends = [], notifications = {} } = state;
+  const { totalXP, statXP = {}, streak = 0, longestStreak = 0, posts = [], friends = [], notifications = {}, routines = [], routineXP = 0 } = state;
   const { level, xpIntoLevel, xpForNextLevel, progress } = getLevelFromXP(totalXP);
   const archetypeKey = getArchetype(statXP);
   const archetype = ARCHETYPES[archetypeKey] || ARCHETYPES.balanced;
@@ -398,15 +399,23 @@ export default function YouScreen({
           </div>
 
           {/* 30-day month grid */}
-          <MonthGrid days={days30} postedDays={postedDays} today={today} />
+          <MonthGrid days={days30} postedDays={postedDays} today={today} activityLog={state.activityLog || {}} />
           <div style={{
             marginTop: 10,
             fontSize: 10, color: TEXT_DIM,
             letterSpacing: "0.08em",
           }}>
-            Last 30 days · filled = posted that day
+            Last 30 days · XP gained per day
           </div>
         </div>
+
+        {/* Routines */}
+        {(routines.length > 0 || routineXP > 0) && (
+          <>
+            <SectionHeader label="Routines" />
+            <RoutinesSummary routines={routines} routineXP={routineXP} />
+          </>
+        )}
       </div>
 
       {/* Settings sheet */}
@@ -423,6 +432,54 @@ export default function YouScreen({
           onReset={() => { setSettingsOpen(false); onReset?.(); }}
         />
       )}
+    </div>
+  );
+}
+
+function RoutinesSummary({ routines, routineXP }) {
+  let best = null;
+  for (const r of routines) {
+    if (!best || (r.longestStreak || 0) > (best.longestStreak || 0)) best = r;
+  }
+  const bestPreset = best ? getRoutinePreset(best.presetId) : null;
+
+  return (
+    <div style={{
+      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
+      padding: "14px 18px", marginBottom: 24,
+      display: "flex", alignItems: "center", gap: 16,
+    }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: 12,
+        background: alpha(ACCENT, "12"),
+        border: `1px solid ${alpha(ACCENT, "40")}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0, fontSize: 22,
+      }}>
+        {bestPreset?.icon || "✨"}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 10, color: TEXT_DIM,
+          letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 600,
+          marginBottom: 4,
+        }}>
+          Lifetime
+        </div>
+        <div style={{
+          fontFamily: SERIF, fontSize: 22, color: TEXT,
+          fontVariantNumeric: "tabular-nums", lineHeight: 1,
+        }}>
+          {routineXP} XP
+        </div>
+        {bestPreset && (
+          <div style={{
+            fontSize: 11, color: TEXT_MID, marginTop: 6,
+          }}>
+            Longest streak: {best.longestStreak} ({bestPreset.title})
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -447,9 +504,18 @@ function SectionHeader({ label }) {
 }
 
 // ── MonthGrid ──
-// 30 cells (5 rows × 6 cols) showing the last 30 days. Filled if the user
-// posted that day. Today gets a ring outline.
-function MonthGrid({ days, postedDays, today }) {
+// 30 cells (5 rows × 6 cols) showing the last 30 days. Each cell shows the
+// XP gained that day, filled with the accent color when the user gained any
+// XP. Posted-but-zero-XP days fall back to a softer fill so the social
+// signal isn't lost. Today gets a ring outline.
+function MonthGrid({ days, postedDays, today, activityLog }) {
+  // Compact XP display: 0 hidden, < 1000 raw, 1000+ as "1.2k".
+  const fmt = (xp) => {
+    if (!xp) return "";
+    if (xp < 1000) return String(xp);
+    return `${(xp / 1000).toFixed(xp >= 10000 ? 0 : 1)}k`;
+  };
+
   return (
     <div style={{
       display: "grid",
@@ -457,21 +523,30 @@ function MonthGrid({ days, postedDays, today }) {
       gap: 6,
     }}>
       {days.map((d) => {
+        const xp = activityLog[d]?.xp || 0;
         const posted = postedDays.has(d);
+        const filled = xp > 0;
         const isToday = d === today;
         return (
           <div
             key={d}
-            title={d}
+            title={`${d}${xp ? ` · ${xp} XP` : ""}`}
             style={{
               aspectRatio: "1 / 1",
               borderRadius: 4,
-              background: posted ? ACCENT : alpha(TEXT_MID, "10"),
+              background: filled ? ACCENT : (posted ? alpha(ACCENT, "25") : alpha(TEXT_MID, "10")),
               border: isToday ? `1.5px solid ${ACCENT}` : "1px solid transparent",
-              boxShadow: posted ? `0 0 6px ${alpha(ACCENT, "40")}` : "none",
+              boxShadow: filled ? `0 0 6px ${alpha(ACCENT, "40")}` : "none",
               transition: "background 0.3s ease",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: filled ? BG : TEXT_DIM,
+              fontSize: 10, fontWeight: 700,
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-0.02em",
             }}
-          />
+          >
+            {fmt(xp)}
+          </div>
         );
       })}
     </div>

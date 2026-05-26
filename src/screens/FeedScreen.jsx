@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, UserPlus, Sparkles, MessageCircle, Send } from "lucide-react";
+import { Bell, UserPlus, Sparkles, MessageCircle, Send, Trash2 } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 
@@ -81,15 +81,21 @@ export default function FeedScreen({
   onUncheer,
   onAddComment,
   onDeleteComment,
+  onDeletePost,
   onOpenNotifs,
   onOpenFriends,
 }) {
   const unreadNotifs = (state.cheersReceived || []).filter((n) => !n.read).length;
   const [filter, setFilter] = useState("all");
 
-  const visiblePosts = filter === "all"
+  const filtered = filter === "all"
     ? posts
     : posts.filter((p) => (p.audienceCircleIds || []).includes(filter));
+
+  // Split "your posts" off the top — same data, different section, lets the
+  // user manage their own posts (delete) without scrolling through the feed.
+  const yourPosts = filtered.filter((p) => p.authorId === "me");
+  const otherPosts = filtered.filter((p) => p.authorId !== "me");
 
   const chips = [{ id: "all", label: "All" }, ...circles.map((c) => ({ id: c.id, label: c.name }))];
 
@@ -167,7 +173,7 @@ export default function FeedScreen({
 
       {/* Posts */}
       <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {visiblePosts.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{
             margin: "24px 4px",
             padding: "48px 24px",
@@ -209,26 +215,69 @@ export default function FeedScreen({
             </button>
           </div>
         ) : (
-          visiblePosts.map((p) => (
-            <PostCard
-              key={p.id}
-              post={p}
-              author={resolveAuthor(state, userName, p.authorId)}
-              resolveCommenter={(id) => resolveAuthor(state, userName, id)}
-              audience={describeAudience(p, circles, state.friends || [], "me")}
-              onCheer={onCheer}
-              onUncheer={onUncheer}
-              onAddComment={onAddComment}
-              onDeleteComment={onDeleteComment}
-            />
-          ))
+          <>
+            {yourPosts.length > 0 && (
+              <FeedSectionHeader label={`Your Posts · ${yourPosts.length}`} />
+            )}
+            {yourPosts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                author={resolveAuthor(state, userName, p.authorId)}
+                resolveCommenter={(id) => resolveAuthor(state, userName, id)}
+                audience={describeAudience(p, circles, state.friends || [], "me")}
+                onCheer={onCheer}
+                onUncheer={onUncheer}
+                onAddComment={onAddComment}
+                onDeleteComment={onDeleteComment}
+                onDeletePost={onDeletePost}
+              />
+            ))}
+
+            {otherPosts.length > 0 && yourPosts.length > 0 && (
+              <FeedSectionHeader label="Friends" />
+            )}
+            {otherPosts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                author={resolveAuthor(state, userName, p.authorId)}
+                resolveCommenter={(id) => resolveAuthor(state, userName, id)}
+                audience={describeAudience(p, circles, state.friends || [], "me")}
+                onCheer={onCheer}
+                onUncheer={onUncheer}
+                onAddComment={onAddComment}
+                onDeleteComment={onDeleteComment}
+              />
+            ))}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function PostCard({ post, author, resolveCommenter, audience, onCheer, onUncheer, onAddComment, onDeleteComment }) {
+function FeedSectionHeader({ label }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8,
+      padding: "8px 4px 4px",
+    }}>
+      <div style={{
+        fontSize: 10, color: TEXT_DIM,
+        letterSpacing: "0.32em", textTransform: "uppercase", fontWeight: 700,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        flex: 1, height: 1,
+        background: `linear-gradient(90deg, ${alpha(TEXT_DIM, "40")}, transparent)`,
+      }} />
+    </div>
+  );
+}
+
+function PostCard({ post, author, resolveCommenter, audience, onCheer, onUncheer, onAddComment, onDeleteComment, onDeletePost }) {
   const arch = ARCHETYPES[author.archetype] || ARCHETYPES.balanced;
   const cat = CATEGORIES[post.goalRef?.category] || null;
   const youCheered = (post.cheers || []).some((c) => c.userId === "me");
@@ -290,6 +339,21 @@ function PostCard({ post, author, resolveCommenter, audience, onCheer, onUncheer
             <span>{formatRelative(post.createdAt)}</span>
           </div>
         </div>
+        {author.isMe && onDeletePost && (
+          <button
+            onClick={() => onDeletePost(post)}
+            aria-label="Delete post"
+            style={{
+              background: "transparent", border: `1px solid ${BORDER_BR}`,
+              width: 30, height: 30, borderRadius: 8,
+              color: TEXT_DIM, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
 
       {/* Goal body */}

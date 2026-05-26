@@ -3,12 +3,58 @@ import { STORAGE_USER, STORAGE_STATE } from '../constants/storage';
 import { CATEGORIES } from '../constants/categories';
 import { todayKey } from '../utils/date';
 import { getLevelFromXP, applyDailyCap } from '../utils/xp';
-import { advanceFriendStreaks } from '../utils/social';
 import { getInitialState } from '../utils/state';
 import { SEED_FRIENDS, SEED_POSTS } from '../constants/socialData';
 import { SEED_GROUPS, SEED_GROUP_INVITES } from '../constants/groupsData';
+import {
+  ROUTINE_PRESETS,
+  MAX_ACTIVE_ROUTINES,
+  ROUTINE_XP_DAILY_CAP,
+  ROUTINE_AUTO_UNSUB_DAYS,
+  getRoutinePreset,
+} from '../constants/routinesData';
 import { TEXT_MID } from '../constants/theme';
 import { fireLocalNotification } from '../utils/notifications';
+
+const dayKeyOf = (ts) => {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const yesterdayKey = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const daysBetween = (fromKey, toKey) => {
+  if (!fromKey || !toKey) return 0;
+  const a = new Date(`${fromKey}T00:00:00`);
+  const b = new Date(`${toKey}T00:00:00`);
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+};
+
+// Apply daily reset to a routines array: streak resets if missed yesterday,
+// clear completedToday, drop subscriptions that have gone cold for 7+ days.
+// Returns { routines, droppedCount }. Pure — caller folds into setState.
+const rolloverRoutines = (routines, today, yesterday) => {
+  const kept = [];
+  let droppedCount = 0;
+  for (const r of routines || []) {
+    const ref = r.lastCompletedDay || dayKeyOf(r.subscribedAt);
+    if (daysBetween(ref, today) >= ROUTINE_AUTO_UNSUB_DAYS) {
+      droppedCount += 1;
+      continue;
+    }
+    const streakKept = r.lastCompletedDay === yesterday || r.lastCompletedDay === today;
+    kept.push({
+      ...r,
+      streak: streakKept ? r.streak : 0,
+      completedToday: r.lastCompletedDay === today,
+    });
+  }
+  return { routines: kept, droppedCount };
+};
 
 // Drop activityLog entries older than 90 days. The log only grows by one
 // key per day, so doing this once at hydration time is enough.
@@ -56,6 +102,11 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
           }
           parsed.lastResetDate = todayKey();
           parsed.categoryXPToday = { fitness: 0, school: 0, life: 0, work: 0, mind: 0 };
+          parsed.routineXPToday = 0;
+          if (parsed.routines) {
+            const { routines: rolled } = rolloverRoutines(parsed.routines, todayKey(), yesterdayKey());
+            parsed.routines = rolled;
+          }
         }
         if (!parsed.friends) parsed.friends = SEED_FRIENDS;
         if (!parsed.groups) parsed.groups = SEED_GROUPS;
@@ -71,6 +122,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
           return {
             ...rest,
             audienceMode: rest.audienceMode ?? "private",
+            invitePolicy: rest.invitePolicy ?? "owner",
             streakDays: rest.streakDays ?? 0,
             lastStreakDay: rest.lastStreakDay ?? null,
           };
@@ -80,6 +132,14 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (parsed.lastWeeklyReminderDate === undefined) parsed.lastWeeklyReminderDate = null;
         if (!parsed.notifications) parsed.notifications = {};
         if (parsed.notifications.weeklyQuestReminder === undefined) parsed.notifications.weeklyQuestReminder = true;
+
+        // Routines: backfill state shape and drop subscriptions whose preset
+        // no longer exists (safety net for preset removal in future versions).
+        if (!parsed.routines) parsed.routines = [];
+        if (parsed.routineXP      === undefined) parsed.routineXP      = 0;
+        if (parsed.routineXPToday === undefined) parsed.routineXPToday = 0;
+        const validRoutineIds = new Set(ROUTINE_PRESETS.map(p => p.id));
+        parsed.routines = parsed.routines.filter(r => validRoutineIds.has(r.presetId));
 
         // Self-heal: prior versions could leave categoryXP/statXP totals exceeding totalXP
         // after deleting daily-capped or rapidly-completed quests. Clamp each bucket so the
@@ -118,10 +178,22 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         if (prev.lastResetDate === today) return prev;
         const pendingTaskCount = prev.tasks.filter(t => t.status === "pending").length;
         const mainPending = prev.mainQuest?.status === "pending" ? 1 : 0;
+        const { routines: rolledRoutines, droppedCount } = rolloverRoutines(
+          prev.routines || [], today, yesterdayKey(),
+        );
+        if (droppedCount > 0) {
+          setTimeout(() => showToast(
+            droppedCount === 1
+              ? "1 routine went cold — unsubscribed"
+              : `${droppedCount} routines went cold — unsubscribed`,
+          ), 600);
+        }
         return {
           ...prev,
           lastResetDate: today,
           categoryXPToday: { fitness: 0, school: 0, life: 0, work: 0, mind: 0 },
+          routineXPToday: 0,
+          routines: rolledRoutines,
           tasks: prev.tasks.map(t => t.status === "pending" ? { ...t, status: "failed" } : t),
           mainQuest: prev.mainQuest?.status === "pending"
             ? { ...prev.mainQuest, status: "failed" }
@@ -289,7 +361,6 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
         { id: Date.now() + Math.random(), taskId, title: taskTitle, category, xp: actualXP, completedAt: Date.now() },
         ...(prev.completedTasks || []),
       ].slice(0, 50),
-      friendStreaks: advanceFriendStreaks(prev.friendStreaks, today, prev.friendActiveDays || {}),
     };
   };
 
@@ -420,6 +491,139 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
   };
 
   const deleteWeeklyQuest = (quest) => deleteAnyQuest(quest, "weekly");
+
+  // ── Routines ────────────────────────────────────────────────────────────
+  // Routines are subscriptions to preset daily practices. Per the design doc:
+  //   - XP adds to totalXP and categoryXP, BYPASSES categoryXPToday
+  //   - Daily cap of ROUTINE_XP_DAILY_CAP across all routines
+  //   - Per-routine streaks only; do NOT advance the main user streak
+  //   - No Posts, no Circle streak side-effects
+  //   - Miss a day → per-routine streak resets at next rollover
+  //   - Ignored 7+ days → auto-unsubscribed at rollover
+  const subscribeRoutine = (presetId) => {
+    const preset = getRoutinePreset(presetId);
+    if (!preset) return false;
+    let ok = false;
+    setState(prev => {
+      const current = prev.routines || [];
+      if (current.some(r => r.presetId === presetId)) return prev;
+      if (current.length >= MAX_ACTIVE_ROUTINES) return prev;
+      ok = true;
+      return {
+        ...prev,
+        routines: [
+          ...current,
+          {
+            presetId,
+            subscribedAt: Date.now(),
+            streak: 0,
+            longestStreak: 0,
+            lastCompletedDay: null,
+            completedToday: false,
+          },
+        ],
+      };
+    });
+    if (ok) {
+      showToast(`Subscribed to ${preset.title}`);
+    } else {
+      const hasIt = (state.routines || []).some(r => r.presetId === presetId);
+      if (!hasIt) showToast("Routine slots full — unsubscribe one first", TEXT_MID);
+    }
+    return ok;
+  };
+
+  const unsubscribeRoutine = (presetId) => {
+    setState(prev => ({
+      ...prev,
+      routines: (prev.routines || []).filter(r => r.presetId !== presetId),
+    }));
+  };
+
+  const completeRoutine = (presetId) => {
+    const effects = [];
+    setState(prev => {
+      const routines = prev.routines || [];
+      const routine = routines.find(r => r.presetId === presetId);
+      if (!routine || routine.completedToday) return prev;
+      const preset = getRoutinePreset(presetId);
+      if (!preset) return prev;
+
+      const today = todayKey();
+      const yesterday = yesterdayKey();
+      const remaining = Math.max(0, ROUTINE_XP_DAILY_CAP - (prev.routineXPToday || 0));
+      const awardedXP = Math.min(preset.xp, remaining);
+
+      const continuing = routine.lastCompletedDay === yesterday;
+      const nextStreak = continuing ? (routine.streak || 0) + 1 : 1;
+      const nextLongest = Math.max(routine.longestStreak || 0, nextStreak);
+
+      const nextRoutines = routines.map(r =>
+        r.presetId === presetId
+          ? {
+              ...r,
+              streak: nextStreak,
+              longestStreak: nextLongest,
+              lastCompletedDay: today,
+              completedToday: true,
+            }
+          : r,
+      );
+
+      const prevLevel = getLevelFromXP(prev.totalXP).level;
+      const newTotal = prev.totalXP + awardedXP;
+      const newLevel = getLevelFromXP(newTotal).level;
+
+      if (awardedXP > 0) {
+        effects.push({ kind: "gain", payload: { id: Date.now() + Math.random(), amount: awardedXP, capped: false } });
+      } else {
+        effects.push({ kind: "routineCapToast" });
+      }
+      if (newLevel > prevLevel) effects.push({ kind: "levelUp", payload: newLevel });
+
+      const todayLog = prev.activityLog[today] || { xp: 0, count: 0 };
+      const prevHistory = prev.levelHistory || [];
+      const newLevelEntries = [];
+      if (newLevel > prevLevel) {
+        const now = Date.now();
+        for (let lv = prevLevel + 1; lv <= newLevel; lv++) {
+          newLevelEntries.push({ level: lv, achievedAt: now });
+        }
+      }
+
+      return {
+        ...prev,
+        routines: nextRoutines,
+        totalXP: newTotal,
+        categoryXP: {
+          ...prev.categoryXP,
+          [preset.category]: (prev.categoryXP[preset.category] || 0) + awardedXP,
+        },
+        // categoryXPToday intentionally untouched — routines bypass the per-category daily cap
+        routineXP: (prev.routineXP || 0) + awardedXP,
+        routineXPToday: (prev.routineXPToday || 0) + awardedXP,
+        levelHistory: newLevelEntries.length ? [...prevHistory, ...newLevelEntries] : prevHistory,
+        activityLog: {
+          ...prev.activityLog,
+          [today]: { xp: todayLog.xp + awardedXP, count: todayLog.count + 1 },
+        },
+      };
+    });
+    for (const e of effects) {
+      if (e.kind === "gain") onXpGain(e.payload);
+      else if (e.kind === "routineCapToast") showToast("Daily routine XP cap reached — routine completed", TEXT_MID);
+      else if (e.kind === "levelUp") {
+        onLevelUp(e.payload);
+        if (state.notifications?.levelUp !== false) {
+          fireLocalNotification(
+            `Level ${e.payload} reached`,
+            "Your prominence rises. Keep climbing.",
+            { tag: `level-up-${e.payload}` },
+          );
+        }
+      }
+    }
+  };
 
   const handleCreateTask = (data) => {
     if (data.isWeeklyQuest) {
@@ -597,6 +801,7 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
     saveEdit, markFailed, deleteTask,
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
     hasPendingWeeklyInCategory,
+    subscribeRoutine, unsubscribeRoutine, completeRoutine,
     resetAll,
     updateProfile, toggleNotification,
   };

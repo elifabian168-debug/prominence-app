@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ArrowRight } from "lucide-react";
-import { ACCENT, BG, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ACCENT, BG, BORDER, BORDER_BR, TEXT, TEXT_DIM, SERIF, alpha } from "../constants/theme";
 import { GROUP_THEMES, GROUP_THEME_KEYS } from "../constants/groupsData";
 import GroupCrest from "../components/groups/GroupCrest";
 
@@ -10,6 +10,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
   const [name, setName] = useState("");
   const [themeKey, setThemeKey] = useState("solar");
   const [audienceMode, setAudienceMode] = useState("private");
+  const [invitePolicy, setInvitePolicy] = useState("owner");
   const nameRef = useRef(null);
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 280); }, []);
@@ -153,6 +154,59 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
           </div>
         </div>
 
+        {/* Invite policy */}
+        <div style={{ marginBottom: 22 }}>
+          <div style={{
+            fontSize: 9, color: TEXT_DIM,
+            letterSpacing: "0.3em", textTransform: "uppercase",
+            fontWeight: 700, marginBottom: 8,
+          }}>
+            Who can invite?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { id: "owner",  label: "Owner only", hint: "You decide who joins" },
+              { id: "anyone", label: "Any member", hint: "Members can invite friends" },
+            ].map((opt) => {
+              const active = invitePolicy === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setInvitePolicy(opt.id)}
+                  className="tappable"
+                  style={{
+                    flex: 1, padding: "10px 12px",
+                    background: active ? alpha(theme.color, "16") : "transparent",
+                    border: `1px solid ${active ? theme.color : BORDER}`,
+                    borderRadius: 10,
+                    cursor: "pointer", textAlign: "left",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{
+                    fontSize: 11, color: active ? theme.color : TEXT, fontWeight: 600,
+                    letterSpacing: "0.04em", marginBottom: 3,
+                  }}>
+                    {opt.label}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: active ? alpha(theme.color, "B0") : TEXT_DIM,
+                    fontStyle: "italic",
+                  }}>
+                    {opt.hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{
+            fontSize: 10, color: TEXT_DIM, fontStyle: "italic",
+            marginTop: 6, lineHeight: 1.4,
+          }}>
+            You can change this later in Circle settings.
+          </div>
+        </div>
+
         {/* Theme picker */}
         <div style={{ marginBottom: 28 }}>
           <div style={{
@@ -201,7 +255,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
 
         {/* Submit */}
         <button
-          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), themeColor: themeKey, audienceMode })}
+          onClick={() => canSubmit && onConfirm?.({ name: name.trim(), themeColor: themeKey, audienceMode, invitePolicy })}
           disabled={!canSubmit}
           style={{
             width: "100%", padding: "16px",

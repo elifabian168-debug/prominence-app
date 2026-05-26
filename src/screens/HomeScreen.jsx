@@ -1,7 +1,8 @@
-import { Bell, Flame, Calendar, Plus, Sparkles, UserPlus, ChevronRight } from "lucide-react";
-import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { Bell, Flame, Calendar, Plus, Sparkles, UserPlus, ChevronRight, Check } from "lucide-react";
+import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 import { getLevelFromXP } from "../utils/xp";
+import { ROUTINE_XP_DAILY_CAP, getRoutinePreset } from "../constants/routinesData";
 import TaskCard from "../components/tasks/TaskCard";
 import WeeklyQuestCard from "../components/tasks/WeeklyQuestCard";
 
@@ -19,8 +20,10 @@ const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 60, 100]);
 export default function HomeScreen({
   state, name, levelingUp, xpGains,
   completeTask, completeMainQuest, completeWeeklyQuest,
+  completeRoutine,
   onOpenActions, onOpenNotifs,
   onAddWeekly, onCreateQuest,
+  onOpenRoutines,
   posts = [],
   onOpenFeed, onOpenAddFriends,
 }) {
@@ -37,7 +40,26 @@ export default function HomeScreen({
   const pendingWeekly = activeWeekly.filter(q => q.status === "pending");
   const { level, progress, xpIntoLevel, xpForNextLevel } = getLevelFromXP(totalXP);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const pendingTasks = tasks.filter(t => t.status === "pending");
+
+  // Daily tasks: pending always show; completed ones stay visible until the
+  // midnight rollover (matches the weekly-quest "stay-after-complete" pattern,
+  // just on a 1-day window instead of 7). Failed tasks drop off immediately.
+  const todayStartMs = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+  const visibleTasks = tasks.filter(t => {
+    if (t.status === "pending") return true;
+    if (t.status === "complete" && (t.completedAt || 0) >= todayStartMs) return true;
+    return false;
+  });
+  const pendingTasks = visibleTasks.filter(t => t.status === "pending");
+  const completedTasksToday = visibleTasks.filter(t => t.status === "complete");
+  const showMainQuest = mainQuest && (
+    mainQuest.status === "pending" ||
+    (mainQuest.status === "complete" && (mainQuest.completedAt || 0) >= todayStartMs)
+  );
 
   // Compact level ring for inline hero header
   const ringSize = 132;
@@ -209,7 +231,7 @@ export default function HomeScreen({
       </div>
 
       {/* Main Quest */}
-      {mainQuest && mainQuest.status === "pending" && (
+      {showMainQuest && (
         <div style={{ marginBottom: 26 }}>
           <div style={{ fontSize: 10, color: alpha(ACCENT, "95"), letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
             <Sparkles size={11} color={ACCENT} /> Main Quest
@@ -222,9 +244,12 @@ export default function HomeScreen({
       <div style={{ marginBottom: 26 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 10, color: TEXT_MID, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 600 }}>Today's Quests</div>
-          <span style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.08em", textTransform: "uppercase" }}>{pendingTasks.length} active</span>
+          <span style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {pendingTasks.length} active
+            {completedTasksToday.length > 0 ? ` · ${completedTasksToday.length} done` : ""}
+          </span>
         </div>
-        {pendingTasks.length === 0 ? (
+        {visibleTasks.length === 0 ? (
           <div style={{
             background: `linear-gradient(135deg, ${alpha(ACCENT, "06")}, ${CARD})`,
             border: `1px dashed ${alpha(ACCENT, "30")}`,
@@ -259,7 +284,7 @@ export default function HomeScreen({
           </div>
         ) : (
           <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {pendingTasks.map((t, i) => (
+            {[...pendingTasks, ...completedTasksToday].map((t, i) => (
               <div key={t.id} style={{ "--i": i }}>
                 <TaskCard task={t} isMain={false}
                   onComplete={() => completeTask(t.id)} onActions={() => onOpenActions(t, "task")} />
@@ -267,6 +292,176 @@ export default function HomeScreen({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Routines — daily auto-respawning practices */}
+      <RoutinesSection
+        routines={state.routines || []}
+        routineXPToday={state.routineXPToday || 0}
+        completeRoutine={completeRoutine}
+        onOpenRoutines={onOpenRoutines}
+      />
+    </div>
+  );
+}
+
+// ── RoutinesSection ──
+// Daily auto-respawning practices. Tap a row → mark complete instantly. Completed
+// rows show dimmed with a check, no XP chip. Empty state is a single CTA card.
+function RoutinesSection({ routines, routineXPToday, completeRoutine, onOpenRoutines }) {
+  if (routines.length === 0) {
+    return (
+      <div style={{ marginBottom: 26 }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: 10,
+        }}>
+          <div style={{
+            fontSize: 10, color: TEXT_MID,
+            letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 600,
+          }}>
+            Routines
+          </div>
+        </div>
+        <button
+          onClick={onOpenRoutines}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 12,
+            padding: "14px 16px", borderRadius: 14,
+            background: `linear-gradient(135deg, ${alpha(ACCENT, "08")}, ${CARD})`,
+            border: `1px dashed ${alpha(ACCENT, "45")}`,
+            cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+          }}
+        >
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+            background: `radial-gradient(circle, ${alpha(ACCENT, "40")}, ${alpha(ACCENT, "15")})`,
+            border: `1px solid ${alpha(ACCENT, "50")}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: `0 0 18px ${alpha(ACCENT, "25")}`,
+          }}>
+            <Plus size={16} color={ACCENT} strokeWidth={2.5} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: TEXT, fontWeight: 500, marginBottom: 2 }}>
+              Add daily Routines
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_DIM }}>
+              Small daily practices · build per-routine streaks
+            </div>
+          </div>
+          <ChevronRight size={18} color={ACCENT} />
+        </button>
+      </div>
+    );
+  }
+
+  const pendingCount = routines.filter((r) => !r.completedToday).length;
+
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: 10,
+      }}>
+        <div style={{
+          fontSize: 10, color: TEXT_MID,
+          letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 600,
+        }}>
+          Routines · {pendingCount} pending
+        </div>
+        <button
+          onClick={onOpenRoutines}
+          style={{
+            background: "transparent", border: "none",
+            color: TEXT_DIM, fontSize: 11, fontWeight: 600,
+            cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 2,
+          }}
+        >
+          Manage <ChevronRight size={12} />
+        </button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {routines.map((r) => {
+          const preset = getRoutinePreset(r.presetId);
+          if (!preset) return null;
+          const cat = CATEGORIES[preset.category];
+          const done = r.completedToday;
+          return (
+            <button
+              key={r.presetId}
+              onClick={() => !done && completeRoutine(r.presetId)}
+              disabled={done}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 12px",
+                background: done ? alpha(TEXT_MID, "06") : CARD,
+                border: `1px solid ${done ? BORDER_BR : BORDER}`,
+                borderRadius: 12,
+                cursor: done ? "default" : "pointer",
+                opacity: done ? 0.6 : 1,
+                textAlign: "left", fontFamily: "inherit",
+              }}
+            >
+              <div style={{
+                width: 30, height: 30, borderRadius: 8,
+                background: alpha(cat?.color || ACCENT, "14"),
+                border: `1px solid ${alpha(cat?.color || ACCENT, "30")}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 15, flexShrink: 0,
+              }}>
+                {preset.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 13, color: TEXT, fontWeight: 500, lineHeight: 1.2,
+                  textDecoration: done ? "line-through" : "none",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {preset.title}
+                </div>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  marginTop: 2, fontSize: 10, color: TEXT_DIM,
+                }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                    <Flame size={9} color={r.streak > 0 ? ACCENT : TEXT_DIM} />
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{r.streak}</span>
+                  </span>
+                </div>
+              </div>
+              {done ? (
+                <div style={{
+                  width: 24, height: 24, borderRadius: "50%",
+                  background: alpha(ACCENT, "18"),
+                  border: `1px solid ${alpha(ACCENT, "55")}`,
+                  color: ACCENT,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <Check size={12} strokeWidth={2.5} />
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: ACCENT,
+                  fontVariantNumeric: "tabular-nums", flexShrink: 0,
+                }}>
+                  +{preset.xp}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 8, fontSize: 10, color: TEXT_DIM,
+        letterSpacing: "0.08em", textAlign: "right",
+        fontVariantNumeric: "tabular-nums",
+      }}>
+        {routineXPToday} / {ROUTINE_XP_DAILY_CAP} XP today
       </div>
     </div>
   );

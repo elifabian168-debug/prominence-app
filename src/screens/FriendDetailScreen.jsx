@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Sparkles, AlertCircle, Flame, Crown, Calendar, UserMinus } from "lucide-react";
-import { ACCENT, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ChevronLeft, ChevronRight, Sparkles, AlertCircle, Crown, Calendar, UserMinus } from "lucide-react";
+import { ACCENT, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { CATEGORIES, ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP, formatXP } from "../utils/xp";
 import { todayKey, formatRelativeTime } from "../utils/date";
@@ -713,7 +713,7 @@ function MiniRadar({ categoryXP, archColor }) {
 
 // ── Main screen ──────────────────────────────────────────────────────────────
 
-export default function FriendDetailScreen({ friend, state, onBack, onCheer, onToggleFriendStreak, onRemoveFriend }) {
+export default function FriendDetailScreen({ friend, state, onBack, onCheer, onRemoveFriend }) {
   const arch = ARCHETYPES[friend.archetype] || ARCHETYPES.balanced;
   const ArchI = arch.icon;
   const lvl = getLevelFromXP(friend.totalXP).level;
@@ -722,7 +722,6 @@ export default function FriendDetailScreen({ friend, state, onBack, onCheer, onT
   const today = todayKey();
   const cheeredToday = state.cheersGiven?.[friend.id] === today;
   const nudgedToday  = state.nudgesGiven?.[friend.id] === today;
-  const sharedStreak = state.friendStreaks?.[friend.id];
   const [burst, setBurst] = useState(null);
   const [showLifestats, setShowLifestats] = useState(false);
   const maxXP = friend.categoryXP ? Math.max(1, ...Object.values(friend.categoryXP)) : 1;
@@ -958,28 +957,6 @@ export default function FriendDetailScreen({ friend, state, onBack, onCheer, onT
             <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>{nudgedToday ? "Nudged" : "Nudge"}</span>
           </button>
         </div>
-
-        {/* Friend Streak */}
-        <button onClick={() => onToggleFriendStreak(friend)} style={{
-          width: "100%", marginBottom: 10, padding: "14px 16px", borderRadius: 14,
-          background: sharedStreak ? `linear-gradient(135deg, ${alpha(ACCENT, "18")}, ${CARD})` : CARD,
-          border: `1px solid ${sharedStreak ? alpha(ACCENT, "50") : BORDER}`,
-          cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12,
-          fontFamily: "inherit",
-        }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0, background: sharedStreak ? alpha(ACCENT, "20") : CARD_ELEV, border: `1px solid ${sharedStreak ? ACCENT : BORDER_BR}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Flame size={18} color={sharedStreak ? ACCENT : TEXT_MID} fill={sharedStreak ? ACCENT : "none"} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 2 }}>
-              {sharedStreak ? `Friend Streak · ${sharedStreak.count} days` : "Start a Friend Streak"}
-            </div>
-            <div style={{ fontSize: 11, color: TEXT_DIM, lineHeight: 1.4 }}>
-              {sharedStreak ? "Both of you complete a quest each day to keep it going." : "Both complete one quest per day. Light pressure — big effect."}
-            </div>
-          </div>
-          {sharedStreak && <span style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.1em", textTransform: "uppercase" }}>End</span>}
-        </button>
 
         {/* Remove friend */}
         <button onClick={onRemoveFriend} style={{

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass, Flame } from "lucide-react";
-import { BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { ChevronLeft, UserPlus, LogOut, Crown, Hourglass, Flame, Settings, X, ChevronRight } from "lucide-react";
+import { BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES } from "../constants/categories";
 import { GROUP_THEMES } from "../constants/groupsData";
 import { todayKey } from "../utils/date";
@@ -36,26 +36,38 @@ export default function GroupDetailScreen({
   onInvite,
   onCancelInvite,
   onLeaveGroup,
+  onKickMember,
+  onOpenSettings,
+  onOpenMember,
+  onAddFriend,
 }) {
   const [enter, setEnter] = useState(false);
   useEffect(() => { const t = setTimeout(() => setEnter(true), 30); return () => clearTimeout(t); }, []);
 
-  if (!group) return null;
-  const theme = GROUP_THEMES[group.themeColor] || GROUP_THEMES.solar;
-
-  // Resolve members to a normalized shape
+  // Resolve members to a normalized shape. `isFriend` lets the row decide
+  // between "tap to open profile" (friend) and "tap to add" (non-friend).
+  // Memo runs unconditionally (no early return above it) to satisfy
+  // rules-of-hooks — null guard for `group` lives below.
   const members = useMemo(
     () =>
-      group.memberIds.map((id) =>
+      (group?.memberIds || []).map((id) =>
         id === "me"
-          ? { id: "me", name: userName, initial: userName[0]?.toUpperCase() || "Y", archetype: userArchetype, weeklyXP: userWeeklyXP, isMe: true }
+          ? { id: "me", name: userName, initial: userName[0]?.toUpperCase() || "Y", archetype: userArchetype, weeklyXP: userWeeklyXP, isMe: true, isFriend: false }
           : (() => {
               const f = friends.find((x) => x.id === id);
-              return f || { id, name: "Unknown", initial: "?", archetype: "balanced", weeklyXP: 0 };
+              return f
+                ? { ...f, isFriend: true }
+                : { id, name: "Unknown", initial: "?", archetype: "balanced", weeklyXP: 0, isFriend: false };
             })()
       ),
-    [group.memberIds, friends, userName, userArchetype, userWeeklyXP]
+    [group, friends, userName, userArchetype, userWeeklyXP]
   );
+
+  if (!group) return null;
+  const theme = GROUP_THEMES[group.themeColor] || GROUP_THEMES.solar;
+  const isOwner = group.founderId === "me";
+  const invitePolicy = group.invitePolicy || "owner";
+  const canInvite = isOwner || invitePolicy === "anyone";
 
   const streakStatus = getStreakStatus(group);
   const streakDays = group.streakDays || 0;
@@ -83,18 +95,34 @@ export default function GroupDetailScreen({
           }}>
             <ChevronLeft size={18} /> Circles
           </button>
-          <button
-            onClick={() => onLeaveGroup?.(group.id)}
-            style={{
-              background: "transparent", border: `1px solid ${BORDER}`,
-              padding: "6px 10px", borderRadius: 8,
-              color: TEXT_DIM, fontSize: 10, fontWeight: 600,
-              letterSpacing: "0.18em", textTransform: "uppercase",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
-            }}
-          >
-            <LogOut size={11} /> Leave
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {isOwner && (
+              <button
+                onClick={() => onOpenSettings?.(group)}
+                aria-label="Circle settings"
+                style={{
+                  background: "transparent", border: `1px solid ${BORDER}`,
+                  width: 30, height: 30, borderRadius: 8,
+                  color: TEXT_DIM, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Settings size={13} />
+              </button>
+            )}
+            <button
+              onClick={() => onLeaveGroup?.(group.id)}
+              style={{
+                background: "transparent", border: `1px solid ${BORDER}`,
+                padding: "6px 10px", borderRadius: 8,
+                color: TEXT_DIM, fontSize: 10, fontWeight: 600,
+                letterSpacing: "0.18em", textTransform: "uppercase",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+              }}
+            >
+              <LogOut size={11} /> Leave
+            </button>
+          </div>
         </div>
 
         {/* Hero — Circle name, tagline, then streak as the dominant number. */}
@@ -123,9 +151,19 @@ export default function GroupDetailScreen({
           {members.map((m, i) => {
             const arch = ARCHETYPES[m.archetype] || ARCHETYPES.balanced;
             const isFounder = m.id === group.founderId;
+            const clickable = m.isFriend && !m.isMe;
+            const handleRowClick = () => {
+              if (!clickable) return;
+              onOpenMember?.(m);
+            };
             return (
               <div
                 key={m.id}
+                onClick={clickable ? handleRowClick : undefined}
+                role={clickable ? "button" : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } } : undefined}
+                className={clickable ? "tappable" : undefined}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
                   padding: "12px 14px",
@@ -133,6 +171,7 @@ export default function GroupDetailScreen({
                   border: `1px solid ${m.isMe ? alpha(theme.color, "40") : BORDER}`,
                   borderRadius: 12,
                   animation: `fadeUp 0.45s ease ${i * 60}ms both`,
+                  cursor: clickable ? "pointer" : "default",
                 }}
               >
                 <div style={{
@@ -172,6 +211,42 @@ export default function GroupDetailScreen({
                     {arch.label}
                   </div>
                 </div>
+                {!m.isMe && !m.isFriend && onAddFriend && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAddFriend(m); }}
+                    aria-label={`Add ${m.name} as a friend`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "6px 10px", borderRadius: 99,
+                      background: alpha(theme.color, "12"),
+                      border: `1px solid ${alpha(theme.color, "45")}`,
+                      color: theme.color,
+                      fontSize: 10, fontWeight: 700,
+                      letterSpacing: "0.16em", textTransform: "uppercase",
+                      cursor: "pointer", flexShrink: 0, fontFamily: "inherit",
+                    }}
+                  >
+                    <UserPlus size={11} /> Add
+                  </button>
+                )}
+                {clickable && (
+                  <ChevronRight size={14} color={TEXT_DIM} style={{ flexShrink: 0 }} />
+                )}
+                {isOwner && !m.isMe && !isFounder && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onKickMember?.(group, m); }}
+                    aria-label={`Remove ${m.name}`}
+                    style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      background: "transparent", border: `1px solid ${BORDER_BR}`,
+                      color: TEXT_DIM, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -230,27 +305,39 @@ export default function GroupDetailScreen({
           })}
         </div>
 
-        {/* Invite CTA */}
-        <button
-          onClick={onInvite}
-          className="tappable"
-          style={{
-            width: "100%", padding: "14px",
-            background: alpha(theme.color, "10"),
-            border: `1px solid ${alpha(theme.color, "50")}`,
-            borderRadius: 12,
-            color: theme.color,
-            fontFamily: "'Outfit', sans-serif",
-            fontSize: 11, fontWeight: 700,
-            letterSpacing: "0.22em", textTransform: "uppercase",
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            marginBottom: 32,
-          }}
-        >
-          <UserPlus size={14} />
-          Invite a Friend
-        </button>
+        {/* Invite CTA — visible when policy allows the current user to invite. */}
+        {canInvite ? (
+          <button
+            onClick={onInvite}
+            className="tappable"
+            style={{
+              width: "100%", padding: "14px",
+              background: alpha(theme.color, "10"),
+              border: `1px solid ${alpha(theme.color, "50")}`,
+              borderRadius: 12,
+              color: theme.color,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 11, fontWeight: 700,
+              letterSpacing: "0.22em", textTransform: "uppercase",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              marginBottom: 32,
+            }}
+          >
+            <UserPlus size={14} />
+            Invite a Friend
+          </button>
+        ) : (
+          <div style={{
+            padding: "12px 14px", borderRadius: 12,
+            border: `1px dashed ${BORDER_BR}`,
+            color: TEXT_DIM, fontSize: 11, fontStyle: "italic",
+            textAlign: "center", marginBottom: 32,
+            lineHeight: 1.4,
+          }}>
+            Only the Circle owner can invite new members.
+          </div>
+        )}
       </div>
     </div>
   );

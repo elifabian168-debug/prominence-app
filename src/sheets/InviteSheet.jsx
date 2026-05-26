@@ -63,7 +63,7 @@ export default function InviteSheet({ open, userName, onClose }) {
       <div style={{ padding: "0 20px 8px" }}>
         <div style={{ fontFamily: SERIF, fontSize: 26, lineHeight: 1.15, marginBottom: 8 }}>Bring someone with you</div>
         <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.5, marginBottom: 20 }}>
-          Share your personal link. When they join, you'll both start a Friend Streak.
+          Share your personal link. When they join, you'll see each other's progress in the Feed.
         </div>
 
         <div style={{

@@ -1,51 +1,19 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { todayKey } from "../utils/date";
-import { advanceFriendStreaks } from "../utils/social";
 import { fireLocalNotification } from "../utils/notifications";
 import { TEXT_MID } from "../constants/theme";
 
 // ── The migration boundary for the social layer ──
-// Today: reads/writes state.friends + state.friendStreaks + state.cheersReceived
-// + state.friendActiveDays + state.cheersGiven + state.nudgesGiven via setState.
+// Today: reads/writes state.friends + state.cheersReceived
+// + state.cheersGiven + state.nudgesGiven via setState.
 // Tomorrow: swap internals to Firestore listeners + Cloud Function calls.
 // Components consuming this hook never change.
 //
-// Also owns the mock simulators (random friend activity ticks and inbound
-// cheers/nudges). When real Firestore data lands, gate these behind a flag.
+// Also owns the mock simulator for inbound cheers/nudges. When real
+// Firestore data lands, gate it behind a flag.
 export function useFriends(state, setState, { showToast }) {
   const friends = state.friends || [];
-  const friendStreaks = state.friendStreaks || {};
   const cheersReceived = state.cheersReceived || [];
-  const friendActiveDays = state.friendActiveDays || {};
-
-  // ── Simulator: friends randomly become "active today" every 5 min.
-  // Advances friend streaks if the user was also active today.
-  useEffect(() => {
-    const tick = () => {
-      const today = todayKey();
-      setState((prev) => {
-        const fids = Object.keys(prev.friendStreaks || {});
-        if (fids.length === 0) return prev;
-        const next = { ...(prev.friendActiveDays || {}) };
-        let changed = false;
-        for (const fid of fids) {
-          if (next[fid] !== today && Math.random() < 0.8) {
-            next[fid] = today;
-            changed = true;
-          }
-        }
-        if (!changed) return prev;
-        const userActive = (prev.activityLog[today]?.count || 0) > 0;
-        const newStreaks = userActive
-          ? advanceFriendStreaks(prev.friendStreaks, today, next)
-          : prev.friendStreaks;
-        return { ...prev, friendActiveDays: next, friendStreaks: newStreaks };
-      });
-    };
-    tick();
-    const id = setInterval(tick, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [setState]);
 
   // ── Simulator: inbound cheers/nudges from random friends every 10–30 min.
   useEffect(() => {
@@ -139,28 +107,6 @@ export function useFriends(state, setState, { showToast }) {
     return true;
   }, [state.cheersGiven, state.nudgesGiven, setState, showToast]);
 
-  // ── Toggle a mutual streak with a friend.
-  const toggleFriendStreak = useCallback((friend) => {
-    const existing = state.friendStreaks?.[friend.id];
-    if (existing) {
-      setState((prev) => {
-        const next = { ...prev.friendStreaks };
-        delete next[friend.id];
-        return { ...prev, friendStreaks: next };
-      });
-      showToast(`Friend Streak with ${friend.name} ended`, TEXT_MID);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        friendStreaks: {
-          ...prev.friendStreaks,
-          [friend.id]: { count: 1, lastBoth: todayKey(), aliveToday: true },
-        },
-      }));
-      showToast(`Friend Streak with ${friend.name} started!`);
-    }
-  }, [state.friendStreaks, setState, showToast]);
-
   // ── Add a friend (no-op if already in circle).
   const addFriend = useCallback((newFriend) => {
     if ((state.friends || []).some((f) => f.id === newFriend.id)) {
@@ -172,19 +118,13 @@ export function useFriends(state, setState, { showToast }) {
   }, [state.friends, setState, showToast]);
 
   // ── Remove a friend. Cleans up every reference to them across the state tree:
-  // streaks, active-day cache, cheer/nudge rate-limit maps, inbound notifications,
-  // and any group memberships or pending invites.
+  // cheer/nudge rate-limit maps, inbound notifications, and any group
+  // memberships or pending invites.
   const removeFriend = useCallback((friend) => {
     setState((prev) => {
       const next = { ...prev };
       next.friends = (prev.friends || []).filter((f) => f.id !== friend.id);
 
-      if (next.friendStreaks) {
-        const s = { ...next.friendStreaks }; delete s[friend.id]; next.friendStreaks = s;
-      }
-      if (next.friendActiveDays) {
-        const d = { ...next.friendActiveDays }; delete d[friend.id]; next.friendActiveDays = d;
-      }
       if (next.cheersGiven) {
         const c = { ...next.cheersGiven }; delete c[friend.id]; next.cheersGiven = c;
       }
@@ -227,18 +167,15 @@ export function useFriends(state, setState, { showToast }) {
 
   return useMemo(() => ({
     friends,
-    friendStreaks,
     cheersReceived,
-    friendActiveDays,
     sendCheer,
-    toggleFriendStreak,
     addFriend,
     removeFriend,
     markAllNotificationsRead,
     dismissNotification,
   }), [
-    friends, friendStreaks, cheersReceived, friendActiveDays,
-    sendCheer, toggleFriendStreak, addFriend, removeFriend,
+    friends, cheersReceived,
+    sendCheer, addFriend, removeFriend,
     markAllNotificationsRead, dismissNotification,
   ]);
 }

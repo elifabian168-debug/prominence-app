@@ -25,6 +25,7 @@ import HomeScreen from "./screens/HomeScreen";
 import FeedScreen from "./screens/FeedScreen";
 import YouScreen from "./screens/YouScreen";
 import LifeStatsScreen from "./screens/LifeStatsScreen";
+import RoutinesScreen from "./screens/RoutinesScreen";
 import FriendsScreen from "./screens/FriendsScreen";
 import FriendDetailScreen from "./screens/FriendDetailScreen";
 import AddFriendsScreen from "./screens/AddFriendsScreen";
@@ -32,6 +33,8 @@ import GroupsScreen from "./screens/GroupsScreen";
 import GroupDetailScreen from "./screens/GroupDetailScreen";
 import CreateGroupScreen from "./screens/CreateGroupScreen";
 import InviteFriendSheet from "./components/groups/InviteFriendSheet";
+import TransferOwnershipSheet from "./components/groups/TransferOwnershipSheet";
+import CircleSettingsSheet from "./components/groups/CircleSettingsSheet";
 
 import EditProfileSheet from "./sheets/EditProfileSheet";
 import NotificationsSheet from "./sheets/NotificationsSheet";
@@ -54,6 +57,7 @@ export default function Prominence() {
     handleCreateTask, completeTask, completeMainQuest,
     saveEdit, markFailed, deleteTask,
     completeWeeklyQuest, saveWeeklyEdit, failWeeklyQuest, deleteWeeklyQuest,
+    subscribeRoutine, unsubscribeRoutine, completeRoutine,
     resetAll,
     updateProfile, toggleNotification,
   } = useGameState({
@@ -86,6 +90,7 @@ export default function Prominence() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifCenterOpen, setNotifCenterOpen]   = useState(false);
   const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
+  const [showRoutines, setShowRoutines] = useState(false);
 
   // ── Circles state ─────────────────────────────────────────────────────────
   // The Circles list lives on its own tab (activeTab === "circles"). The
@@ -94,21 +99,28 @@ export default function Prominence() {
   const [creatingGroup, setCreatingGroup]           = useState(false);
   const [respondingToInvite, setRespondingToInvite] = useState(null);          // invite object
   const [invitingForGroup, setInvitingForGroup]     = useState(null);          // Circle when picking friend
+  const [transferOwnerFor, setTransferOwnerFor]     = useState(null);          // Circle when picking new leader (on owner-leave)
+  const [settingsForCircle, setSettingsForCircle]   = useState(null);          // Circle when owner opens settings
+  const [confirmKick, setConfirmKick]               = useState(null);          // { group, member }
+  const [confirmLeaderTransfer, setConfirmLeaderTransfer] = useState(null);    // { group, newOwner }
+  const [confirmDissolve, setConfirmDissolve]       = useState(null);          // group (owner-leave with no other members)
+  const [confirmDeletePost, setConfirmDeletePost]   = useState(null);          // post object
 
   const {
     groups, groupInvites,
     createGroup, inviteFriend, cancelInvite,
     acceptInvite, declineInvite, leaveGroup,
+    kickMember, transferOwnership, setInvitePolicy,
   } = useGroups(state, setState, {
     onInviteAccepted: (friend, group) => showToast(`${friend.name} joined ${group.name}`),
   });
 
   const {
-    sendCheer, toggleFriendStreak, addFriend, removeFriend,
+    sendCheer, addFriend, removeFriend,
     markAllNotificationsRead, dismissNotification,
   } = useFriends(state, setState, { showToast });
 
-  const { posts, cheerPost, uncheerPost, addComment, deleteComment } = usePosts(state, setState);
+  const { posts, cheerPost, uncheerPost, addComment, deleteComment, deletePost } = usePosts(state, setState);
 
   // ── Action handlers ───────────────────────────────────────────────────────
   // kind: "task" | "main" | "weekly"
@@ -212,7 +224,7 @@ export default function Prominence() {
 
   const showOverlayNav =
     !showLifeStats && !showFriends && !showAddFriends && !friendDetail &&
-    !groupDetail && !creatingGroup;
+    !groupDetail && !creatingGroup && !showRoutines;
 
   const userArchetype = getArchetype(state.statXP);
   const userWeeklyXP  = state.activityLog?.[new Date().toISOString().slice(0, 10)]?.xp || 0;
@@ -234,12 +246,67 @@ export default function Prominence() {
 
   const refreshedGroupDetail = groupDetail ? groups.find((g) => g.id === groupDetail.id) : null;
 
+  // ── Leave: route owners with members through the leader-picker first.
+  // Owner alone → dissolve confirmation. Non-owner → leave directly.
+  const handleLeaveGroup = (groupId) => {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+    if (g.founderId === "me") {
+      const others = (g.memberIds || []).filter((id) => id !== "me");
+      if (others.length === 0) {
+        setConfirmDissolve(g);
+      } else {
+        setTransferOwnerFor(g);
+      }
+      return;
+    }
+    leaveGroup(groupId);
+    setGroupDetail(null);
+    showToast("Left the Circle");
+  };
+
+  const handleConfirmLeaderTransfer = () => {
+    const { group, newOwner } = confirmLeaderTransfer;
+    transferOwnership(group.id, newOwner.id);
+    leaveGroup(group.id);
+    setConfirmLeaderTransfer(null);
+    setTransferOwnerFor(null);
+    setGroupDetail(null);
+    showToast(`${newOwner.name} is now leading ${group.name}`);
+  };
+
+  const handleConfirmDissolve = () => {
+    const g = confirmDissolve;
+    leaveGroup(g.id);
+    setConfirmDissolve(null);
+    setGroupDetail(null);
+    showToast(`${g.name} dissolved`);
+  };
+
+  const handleKickMember = (group, member) => setConfirmKick({ group, member });
+  const handleConfirmKick = () => {
+    const { group, member } = confirmKick;
+    kickMember(group.id, member.id);
+    setConfirmKick(null);
+    showToast(`${member.name} removed`);
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-atmos" style={{ background: BG, minHeight: "100vh", color: TEXT, paddingBottom: 90 }}>
       <div className="app-page" style={{ maxWidth: 480, margin: "0 auto", position: "relative", zIndex: 1 }}>
 
-        {showLifeStats ? (
+        {showRoutines ? (
+          <div style={{ animation: "screenIn 0.3s ease" }}>
+            <RoutinesScreen
+              routines={state.routines || []}
+              routineXPToday={state.routineXPToday || 0}
+              onBack={() => setShowRoutines(false)}
+              onSubscribe={subscribeRoutine}
+              onUnsubscribe={unsubscribeRoutine}
+            />
+          </div>
+        ) : showLifeStats ? (
           <div style={{ animation: "screenIn 0.3s ease" }}>
             <LifeStatsScreen state={state} name={user.name} onBack={() => setShowLifeStats(false)} />
           </div>
@@ -248,7 +315,6 @@ export default function Prominence() {
             <FriendDetailScreen friend={friendDetail} state={state}
               onBack={() => setFriendDetail(null)}
               onCheer={sendCheer}
-              onToggleFriendStreak={toggleFriendStreak}
               onRemoveFriend={() => setConfirmRemoveFriend(friendDetail)} />
           </div>
         ) : showAddFriends ? (
@@ -284,7 +350,18 @@ export default function Prominence() {
               onBack={() => setGroupDetail(null)}
               onInvite={() => setInvitingForGroup(refreshedGroupDetail)}
               onCancelInvite={(gid, fid) => { cancelInvite(gid, fid); showToast("Invite cancelled"); }}
-              onLeaveGroup={(gid) => { leaveGroup(gid); setGroupDetail(null); showToast("Left the Circle"); }}
+              onLeaveGroup={handleLeaveGroup}
+              onKickMember={handleKickMember}
+              onOpenSettings={(g) => setSettingsForCircle(g)}
+              onOpenMember={(member) => setFriendDetail(member)}
+              onAddFriend={(member) => {
+                addFriend({
+                  id: member.id,
+                  name: member.name,
+                  initial: member.initial,
+                  archetype: member.archetype,
+                });
+              }}
             />
           </div>
         ) : showFriends ? (
@@ -306,10 +383,12 @@ export default function Prominence() {
                 <HomeScreen state={state} name={user.name} levelingUp={levelingUp} xpGains={xpGains}
                   completeTask={completeTask} completeMainQuest={completeMainQuest}
                   completeWeeklyQuest={completeWeeklyQuest}
+                  completeRoutine={completeRoutine}
                   onOpenActions={openActions}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onAddWeekly={() => openCreateModal("weekly")}
                   onCreateQuest={() => openCreateModal("normal")}
+                  onOpenRoutines={() => setShowRoutines(true)}
                   posts={posts}
                   onOpenFeed={() => setActiveTab("feed")}
                   onOpenAddFriends={() => setShowAddFriends(true)} />
@@ -326,6 +405,7 @@ export default function Prominence() {
                   onUncheer={uncheerPost}
                   onAddComment={addComment}
                   onDeleteComment={deleteComment}
+                  onDeletePost={(post) => setConfirmDeletePost(post)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
                   onOpenFriends={() => setShowAddFriends(true)} />
               </div>
@@ -404,9 +484,33 @@ export default function Prominence() {
           onClose={() => setInvitingForGroup(null)}
           onPick={(friend) => {
             const group = invitingForGroup;
-            inviteFriend(group.id, friend.id);
+            const ok = inviteFriend(group.id, friend.id);
             setInvitingForGroup(null);
-            showToast(`Invited ${friend.name}`);
+            if (ok) showToast(`Invited ${friend.name}`);
+            else showToast("Only the Circle owner can invite", FAIL_COLOR);
+          }}
+          onAddNew={() => {
+            setInvitingForGroup(null);
+            setShowAddFriends(true);
+          }}
+        />
+
+        <TransferOwnershipSheet
+          open={!!transferOwnerFor}
+          group={transferOwnerFor}
+          friends={state.friends || []}
+          onClose={() => setTransferOwnerFor(null)}
+          onPick={(newOwner) => setConfirmLeaderTransfer({ group: transferOwnerFor, newOwner })}
+        />
+
+        <CircleSettingsSheet
+          open={!!settingsForCircle}
+          group={settingsForCircle ? (groups.find((g) => g.id === settingsForCircle.id) || settingsForCircle) : null}
+          onClose={() => setSettingsForCircle(null)}
+          onChangeInvitePolicy={(policy) => {
+            if (!settingsForCircle) return;
+            setInvitePolicy(settingsForCircle.id, policy);
+            showToast(policy === "anyone" ? "Any member can invite" : "Only the owner can invite");
           }}
         />
 
@@ -458,6 +562,50 @@ export default function Prominence() {
               setFriendDetail(null);
             }}
             onCancel={() => setConfirmRemoveFriend(null)} />
+        )}
+
+        {confirmKick && (
+          <ConfirmDialog
+            icon={AlertCircle}
+            title={`Remove ${confirmKick.member.name}?`}
+            message={`${confirmKick.member.name} will lose access to ${confirmKick.group.name} immediately. Their past posts remain.`}
+            confirmLabel="Remove" confirmColor={FAIL_COLOR}
+            onConfirm={handleConfirmKick}
+            onCancel={() => setConfirmKick(null)} />
+        )}
+
+        {confirmLeaderTransfer && (
+          <ConfirmDialog
+            icon={Users}
+            title={`Make ${confirmLeaderTransfer.newOwner.name} the leader?`}
+            message={`${confirmLeaderTransfer.newOwner.name} will take over ${confirmLeaderTransfer.group.name}. You'll leave the Circle immediately after.`}
+            confirmLabel="Hand off & leave" confirmColor={ACCENT}
+            onConfirm={handleConfirmLeaderTransfer}
+            onCancel={() => setConfirmLeaderTransfer(null)} />
+        )}
+
+        {confirmDissolve && (
+          <ConfirmDialog
+            icon={AlertCircle}
+            title={`Dissolve ${confirmDissolve.name}?`}
+            message="You're the only member. Leaving will dissolve this Circle. This can't be undone."
+            confirmLabel="Dissolve" confirmColor={FAIL_COLOR}
+            onConfirm={handleConfirmDissolve}
+            onCancel={() => setConfirmDissolve(null)} />
+        )}
+
+        {confirmDeletePost && (
+          <ConfirmDialog
+            icon={Trash2}
+            title="Delete this post?"
+            message="This post will be removed from your feed and your friends' feeds. Cheers and comments on it will be lost."
+            confirmLabel="Delete" confirmColor={FAIL_COLOR}
+            onConfirm={() => {
+              deletePost(confirmDeletePost.id);
+              setConfirmDeletePost(null);
+              showToast("Post deleted");
+            }}
+            onCancel={() => setConfirmDeletePost(null)} />
         )}
 
         {confirmReset && (

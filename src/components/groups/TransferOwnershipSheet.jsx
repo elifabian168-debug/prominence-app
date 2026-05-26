@@ -1,27 +1,25 @@
-import { X, UserPlus } from "lucide-react";
+import { X, Crown } from "lucide-react";
 import { BG, CARD, CARD_ELEV, BORDER, TEXT, TEXT_DIM, SERIF, alpha } from "../../constants/theme";
 import { ARCHETYPES } from "../../constants/categories";
 import { GROUP_THEMES } from "../../constants/groupsData";
 
-// ── InviteFriendSheet ──
-// Bottom sheet to pick a friend (who isn't already a member or invited).
-// On select, returns the friend object — parent fires the invite directly.
-// The "Add someone new" row hands off to the add-friend flow via onAddNew.
-export default function InviteFriendSheet({
+// Owner-leave flow: when the founder taps Leave on a Circle that still has
+// other members, they pick a new leader before stepping down. Tapping a
+// member returns that member to the parent via onPick.
+export default function TransferOwnershipSheet({
   open,
   friends = [],
   group,
   onPick,
-  onAddNew,
   onClose,
 }) {
-  if (!open) return null;
+  if (!open || !group) return null;
 
-  const memberIds = new Set(group?.memberIds || []);
-  const pendingIds = new Set((group?.pendingInvites || []).map((i) => i.friendId));
-  const eligible = friends.filter((f) => !memberIds.has(f.id) && !pendingIds.has(f.id));
-
-  const theme = GROUP_THEMES[group?.themeColor] || GROUP_THEMES.solar;
+  const theme = GROUP_THEMES[group.themeColor] || GROUP_THEMES.solar;
+  const candidates = (group.memberIds || [])
+    .filter((id) => id !== "me")
+    .map((id) => friends.find((f) => f.id === id))
+    .filter(Boolean);
 
   return (
     <div
@@ -50,24 +48,22 @@ export default function InviteFriendSheet({
           boxShadow: `0 -20px 60px ${alpha("#000", "40")}`,
         }}
       >
-        {/* Handle */}
         <div style={{
           width: 40, height: 4, borderRadius: 2,
           background: BORDER,
           margin: "0 auto 18px",
         }} />
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <div>
             <div style={{
               fontSize: 10, color: TEXT_DIM,
               letterSpacing: "0.32em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6,
             }}>
-              Invite to Circle
+              Choose a new leader
             </div>
             <div style={{ fontFamily: SERIF, fontSize: 24, color: TEXT, lineHeight: 1, letterSpacing: "0.02em" }}>
-              {group?.name}
+              {group.name}
             </div>
           </div>
           <button
@@ -81,53 +77,23 @@ export default function InviteFriendSheet({
           </button>
         </div>
 
-        {/* Add-someone-new entry: handoff to the add-friend flow */}
-        {onAddNew && (
-          <button
-            onClick={onAddNew}
-            className="tappable"
-            style={{
-              width: "100%",
-              display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 14px",
-              background: alpha(theme.color, "08"),
-              border: `1px dashed ${alpha(theme.color, "55")}`,
-              borderRadius: 12,
-              cursor: "pointer", textAlign: "left",
-              marginBottom: 12, fontFamily: "inherit",
-            }}
-          >
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: alpha(theme.color, "14"),
-              border: `1px dashed ${alpha(theme.color, "55")}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, color: theme.color,
-            }}>
-              <UserPlus size={14} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, color: TEXT, fontWeight: 600 }}>
-                Add someone new
-              </div>
-              <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2, fontStyle: "italic" }}>
-                Friend them first, then come back here to invite
-              </div>
-            </div>
-          </button>
-        )}
+        <div style={{
+          fontSize: 12, color: TEXT_DIM, fontStyle: "italic",
+          marginBottom: 16, lineHeight: 1.4,
+        }}>
+          Pick a member to take over. You'll leave the Circle once they're set as the new owner.
+        </div>
 
-        {/* Eligible friend list */}
-        {eligible.length === 0 ? (
+        {candidates.length === 0 ? (
           <div style={{
             padding: "32px 16px", textAlign: "center",
             color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", fontSize: 14,
           }}>
-            {onAddNew ? "No existing friends left to invite." : "No friends left to invite — all are members or already invited."}
+            No other members to hand off to.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {eligible.map((f) => {
+            {candidates.map((f) => {
               const arch = ARCHETYPES[f.archetype] || ARCHETYPES.balanced;
               return (
                 <button
@@ -142,10 +108,8 @@ export default function InviteFriendSheet({
                     borderRadius: 12,
                     cursor: "pointer",
                     textAlign: "left",
-                    transition: "border-color 0.2s ease",
                   }}
                 >
-                  {/* Avatar */}
                   <div style={{
                     width: 36, height: 36, borderRadius: "50%",
                     background: `linear-gradient(135deg, ${alpha(arch.color, "80")} 0%, ${alpha(arch.color, "30")} 100%)`,
@@ -158,8 +122,6 @@ export default function InviteFriendSheet({
                       textShadow: `0 1px 2px ${alpha("#000", "50")}`,
                     }}>{f.initial || f.name?.[0]?.toUpperCase()}</span>
                   </div>
-
-                  {/* Name + archetype */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, color: TEXT, fontWeight: 600, lineHeight: 1.2 }}>
                       {f.name}
@@ -172,13 +134,13 @@ export default function InviteFriendSheet({
                       {arch.label}
                     </div>
                   </div>
-
-                  {/* Selection hint */}
                   <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
                     fontSize: 9, color: theme.color,
                     letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700,
                   }}>
-                    Invite →
+                    <Crown size={11} />
+                    Make leader
                   </div>
                 </button>
               );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, Plus, Flame, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail } from "lucide-react";
+import { ChevronLeft, Plus, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 
 const WEEKLY_ACCENT = "#7CA9F2";
@@ -58,13 +58,8 @@ const RANK_THEMES = {
 export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd, onOpenGroups, groupCount = 0, pendingInviteCount = 0 }) {
   const [tab, setTab] = useState("activity");
   const friends = state.friends || [];
-  const friendStreaks = state.friendStreaks || {};
   const cheersGiven = state.cheersGiven || {};
   const today = todayKey();
-
-  const activeStreaks = Object.entries(friendStreaks)
-    .map(([fid, s]) => ({ friend: friends.find(f => f.id === fid), streak: s }))
-    .filter(x => x.friend);
 
   const feed = useMemo(() => (
     [...friends].filter(f => f.recentActivity).sort((a, b) => a.recentActivity.minutesAgo - b.recentActivity.minutesAgo)
@@ -168,43 +163,6 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
             Open →
           </div>
         </button>
-      )}
-
-      {/* Friend Streaks */}
-      {activeStreaks.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ fontSize: 10, color: alpha(ACCENT, "95"), letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10, display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
-            <Flame size={12} color={ACCENT} /> Friend Streaks
-          </div>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-            {activeStreaks.map(({ friend, streak }) => {
-              const myDone = (state.activityLog[today]?.count || 0) > 0;
-              const atRisk = !myDone || streak.lastBoth !== today;
-              return (
-                <div key={friend.id} onClick={() => onOpenFriend(friend)} className="friend-tap" style={{
-                  flexShrink: 0, width: 130, padding: "12px 14px",
-                  background: atRisk
-                    ? `linear-gradient(135deg, ${alpha("#F87171", "15")}, ${CARD})`
-                    : `linear-gradient(135deg, ${alpha(ACCENT, "15")}, ${CARD})`,
-                  border: `1px solid ${atRisk ? "#F8717140" : alpha(ACCENT, "40")}`,
-                  borderRadius: 14, cursor: "pointer", textAlign: "left",
-                  boxShadow: atRisk ? "none" : `0 2px 10px ${alpha(ACCENT, "10")}`,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <ArchAvatar friend={friend} size={26} />
-                    <span style={{ fontSize: 11, color: TEXT, fontWeight: 600 }}>{friend.name}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                    <Flame size={13} color={atRisk ? "#F87171" : ACCENT} />
-                    <span style={{ fontFamily: SERIF, fontSize: 24, color: atRisk ? "#F87171" : ACCENT, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{streak.count}</span>
-                    <span style={{ fontSize: 9, color: TEXT_DIM, letterSpacing: "0.1em", textTransform: "uppercase" }}>days</span>
-                  </div>
-                  {atRisk && <div style={{ fontSize: 9, color: "#F87171", marginTop: 4, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>At risk today</div>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
 
       {/* Tab switcher */}

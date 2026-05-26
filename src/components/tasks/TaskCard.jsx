@@ -11,7 +11,11 @@ export default function TaskCard({ task, isMain, onComplete, onActions }) {
   const [pressed, setPressed] = useState(false);
   const [burst, setBurst] = useState(false);
 
+  const isComplete = task.status === "complete";
+  const checked = pressed || isComplete;
+
   const handleComplete = () => {
+    if (isComplete) return;
     setPressed(true);
     setBurst(true);
     setTimeout(() => { onComplete(); setPressed(false); setBurst(false); }, 520);
@@ -25,23 +29,23 @@ export default function TaskCard({ task, isMain, onComplete, onActions }) {
       display: "flex", alignItems: "center", gap: 12,
       transition: "transform 0.2s ease, opacity 0.25s ease",
       transform: pressed ? "scale(0.97)" : "scale(1)",
-      opacity: pressed ? 0.65 : 1,
+      opacity: pressed ? 0.65 : (isComplete ? 0.55 : 1),
     }}>
       <div style={{ position: "relative", flexShrink: 0, width: 28, height: 28 }}>
-        <button onClick={handleComplete} aria-label="Complete quest" style={{
+        <button onClick={handleComplete} aria-label={isComplete ? "Already completed" : "Complete quest"} style={{
           width: 28, height: 28, borderRadius: "50%",
-          background: pressed ? ACCENT : "transparent",
-          border: `1.5px solid ${pressed ? ACCENT : (isMain ? ACCENT : BORDER_BR)}`,
+          background: checked ? ACCENT : "transparent",
+          border: `1.5px solid ${checked ? ACCENT : (isMain ? ACCENT : BORDER_BR)}`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", padding: 0,
+          cursor: isComplete ? "default" : "pointer", padding: 0,
           transition: "background 0.15s ease, border-color 0.15s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease",
           transform: pressed ? "scale(1.25)" : "scale(1)",
           boxShadow: pressed ? `0 0 18px ${alpha(ACCENT, "80")}` : "none",
         }}>
-          {pressed && (
+          {checked && (
             <Check
               size={15} color="#0A0A0B" strokeWidth={3}
-              style={{ animation: "checkStamp 0.22s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
+              style={pressed ? { animation: "checkStamp 0.22s cubic-bezier(0.34,1.56,0.64,1) forwards" } : undefined}
             />
           )}
         </button>
@@ -62,10 +66,20 @@ export default function TaskCard({ task, isMain, onComplete, onActions }) {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: TEXT, fontWeight: 500, marginBottom: 2 }}>{task.title}</div>
+        <div style={{
+          fontSize: 14, color: TEXT, fontWeight: 500, marginBottom: 2,
+          textDecoration: isComplete ? "line-through" : "none",
+        }}>{task.title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Icon size={10} color={cat.color} />
           <span style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.12em", textTransform: "uppercase" }}>{cat.label}</span>
+          {isComplete && (
+            <span style={{
+              fontSize: 9, color: ACCENT, fontWeight: 700,
+              letterSpacing: "0.2em", textTransform: "uppercase",
+              marginLeft: 4,
+            }}>Complete</span>
+          )}
         </div>
       </div>
 
