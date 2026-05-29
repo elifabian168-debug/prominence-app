@@ -1,6 +1,4 @@
 import { todayKey } from "./date";
-import { SEED_FRIENDS, SEED_POSTS } from "../constants/socialData";
-import { SEED_GROUPS, SEED_GROUP_INVITES } from "../constants/groupsData";
 
 export const getInitialState = (firstQuest) => {
   const tasks = [];
@@ -48,10 +46,10 @@ export const getInitialState = (firstQuest) => {
     routines: [],
     routineXP: 0,
     routineXPToday: 0,
-    friends: SEED_FRIENDS,
-    groups: SEED_GROUPS,
-    groupInvites: SEED_GROUP_INVITES,
-    posts: SEED_POSTS,
+    friends: [],
+    groups: [],
+    groupInvites: [],
+    posts: [],
     cheersGiven: {},
     nudgesGiven: {},
     cheersReceived: [],

@@ -4,8 +4,6 @@ import { CATEGORIES } from '../constants/categories';
 import { todayKey } from '../utils/date';
 import { getLevelFromXP, applyDailyCap } from '../utils/xp';
 import { getInitialState } from '../utils/state';
-import { SEED_FRIENDS, SEED_POSTS } from '../constants/socialData';
-import { SEED_GROUPS, SEED_GROUP_INVITES } from '../constants/groupsData';
 import {
   ROUTINE_PRESETS,
   MAX_ACTIVE_ROUTINES,
@@ -108,10 +106,10 @@ export function useGameState({ showToast, onLevelUp, onXpGain }) {
             parsed.routines = rolled;
           }
         }
-        if (!parsed.friends) parsed.friends = SEED_FRIENDS;
-        if (!parsed.groups) parsed.groups = SEED_GROUPS;
-        if (!parsed.groupInvites) parsed.groupInvites = SEED_GROUP_INVITES;
-        if (!parsed.posts) parsed.posts = SEED_POSTS;
+        if (!parsed.friends) parsed.friends = [];
+        if (!parsed.groups) parsed.groups = [];
+        if (!parsed.groupInvites) parsed.groupInvites = [];
+        if (!parsed.posts) parsed.posts = [];
         if (parsed.lastStreakDay === undefined) parsed.lastStreakDay = null;
         // Backfill Circle fields for older saved groups, and strip the
         // deleted ones (groupXP, lastActivityDate, activityFeed).

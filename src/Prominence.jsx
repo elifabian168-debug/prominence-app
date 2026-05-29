@@ -561,7 +561,8 @@ export default function Prominence() {
                   onDeleteComment={deleteComment}
                   onDeletePost={(post) => setConfirmDeletePost(post)}
                   onOpenNotifs={() => setNotifCenterOpen(true)}
-                  onOpenFriends={() => setShowAddFriends(true)} />
+                  onOpenFriends={() => setShowAddFriends(true)}
+                  friendRequestCount={pendingFriendRequests.length} />
               </div>
             )}
             {activeTab === "circles" && (
@@ -585,7 +586,8 @@ export default function Prominence() {
                   onOpenAddFriends={() => setShowAddFriends(true)}
                   onOpenFriend={setFriendDetail}
                   theme={theme}
-                  onToggleTheme={toggleTheme} />
+                  onToggleTheme={toggleTheme}
+                  friendRequestCount={pendingFriendRequests.length} />
               </div>
             )}
           </>

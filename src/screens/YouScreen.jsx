@@ -46,6 +46,7 @@ export default function YouScreen({
   onReset, onOpenLifeStats, onEditProfile, onOpenNotifications,
   theme, onToggleTheme,
   onOpenFriends, onOpenAddFriends, onOpenFriend,
+  friendRequestCount = 0,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { isDesktop } = useViewport();
@@ -274,9 +275,22 @@ export default function YouScreen({
               background: "transparent", border: "none",
               color: TEXT_DIM, fontSize: 11, fontWeight: 600,
               cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 2,
+              display: "flex", alignItems: "center", gap: 6,
+              position: "relative",
             }}
           >
+            {friendRequestCount > 0 && (
+              <div style={{
+                minWidth: 16, height: 16, borderRadius: 99,
+                background: ACCENT, color: BG,
+                fontSize: 9, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "0 4px",
+                boxShadow: `0 0 8px ${alpha(ACCENT, "50")}`,
+              }}>
+                {friendRequestCount}
+              </div>
+            )}
             See all <ChevronRight size={12} />
           </button>
         </div>

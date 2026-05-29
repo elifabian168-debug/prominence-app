@@ -53,7 +53,8 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
         const currentUid = auth.currentUser?.uid;
         const found = await searchUsers(raw, currentUid);
         setResults(found.filter(u => !existingIds.has(u.uid)));
-      } catch {
+      } catch (err) {
+        console.error("Friend search failed:", err?.code, err?.message);
         setResults([]);
       } finally {
         setSearching(false);
@@ -252,9 +253,7 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
       <InviteSheet open={inviteOpen} userName={userName} onClose={() => setInviteOpen(false)} />
       <ContactsSheet
         open={contactsOpen}
-        existingFriendIds={existingIds}
         onClose={() => setContactsOpen(false)}
-        onAdd={onAdd}
         onInvited={onInvited}
       />
     </div>

@@ -54,41 +54,5 @@ export function getCrestSymbol(seed) {
   return CREST_SYMBOLS[hashSeed(String(seed || "default")) % CREST_SYMBOLS.length];
 }
 
-// ── Seed groups ──
-// 1 group the user already belongs to — visible immediately on the Circles tab.
-export const SEED_GROUPS = [
-  {
-    id: "g_iron_sun",
-    name: "Gym",
-    themeColor: "solar",
-    crestSeed: "gym-2026",
-    founderId: "me",
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12, // 12 days ago
-    memberIds: ["me", "f2", "f1"],
-    pendingInvites: [],
-    audienceMode: "shared",
-    invitePolicy: "owner",
-    streakDays: 5,
-    lastStreakDay: (() => {
-      // Yesterday — so the streak is "at risk" until the user posts today.
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      return d.toISOString().slice(0, 10);
-    })(),
-  },
-];
-
-// ── Seed invites ──
-// 1 pending invite TO the user.
-export const SEED_GROUP_INVITES = [
-  {
-    groupId: "g_quiet_hand",
-    groupName: "Book club",
-    themeColor: "onyx",
-    audienceMode: "shared",
-    crestSeed: "book-club-2026",
-    fromName: "Marcus",
-    fromId: "f3",
-    invitedAt: Date.now() - 1000 * 60 * 60 * 6,
-  },
-];
+export const SEED_GROUPS       = [];
+export const SEED_GROUP_INVITES = [];

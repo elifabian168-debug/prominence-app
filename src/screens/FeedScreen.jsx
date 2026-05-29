@@ -85,9 +85,10 @@ export default function FeedScreen({
   onDeletePost,
   onOpenNotifs,
   onOpenFriends,
+  friendRequestCount = 0,
 }) {
   const { isDesktop } = useViewport();
-  const unreadNotifs = (state.cheersReceived || []).filter((n) => !n.read).length;
+  const unreadNotifs = (state.cheersReceived || []).filter((n) => !n.read).length + friendRequestCount;
   const [filter, setFilter] = useState("all");
 
   const filtered = filter === "all"

@@ -1,22 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Phone, Check, Plus, Send, Search } from "lucide-react";
-import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
-import { ARCHETYPES } from "../constants/categories";
-import { DISCOVERABLE_USERS, CONTACT_MATCHES } from "../constants/socialData";
+import { X, Phone, Send, Search } from "lucide-react";
+import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import BottomSheet from "../components/ui/BottomSheet";
 
-export default function ContactsSheet({ open, existingFriendIds, onClose, onAdd, onInvited }) {
-  const [phase, setPhase] = useState("prompt"); // prompt | scanning | results
-  const [added, setAdded] = useState(new Set());
+export default function ContactsSheet({ open, onClose, onInvited }) {
+  const [phase, setPhase] = useState("prompt"); // prompt | scanning | done
   const [invited, setInvited] = useState(new Set());
   const timerRef = useRef(null);
 
-  // Reset to prompt on close and cancel any in-flight scan timer
   useEffect(() => {
     if (!open) {
       clearTimeout(timerRef.current);
       setPhase("prompt");
-      setAdded(new Set());
+      setInvited(new Set());
     }
   }, [open]);
 
@@ -29,25 +25,19 @@ export default function ContactsSheet({ open, existingFriendIds, onClose, onAdd,
         await navigator.contacts.select(["name", "tel"], { multiple: true });
       }
     } catch {}
-    timerRef.current = setTimeout(() => setPhase("results"), 900);
+    timerRef.current = setTimeout(() => setPhase("done"), 900);
   };
 
-  const handleAdd = (match, user) => {
-    onAdd(user);
-    setAdded(s => new Set([...s, match.phone]));
+  const handleInvite = () => {
+    const url = window.location.origin;
+    if (navigator.share) {
+      navigator.share({ title: "Join me on Prominence", url }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    onInvited?.({ name: "contact" });
+    setInvited(s => new Set([...s, "shared"]));
   };
-
-  const handleInvite = (match) => {
-    onInvited?.(match);
-    setInvited(s => new Set([...s, match.phone]));
-  };
-
-  const enriched = CONTACT_MATCHES.map(m => ({
-    ...m,
-    user: m.matchedUserId ? DISCOVERABLE_USERS.find(u => u.id === m.matchedUserId) : null,
-  }));
-  const matches    = enriched.filter(m => m.user && !existingFriendIds.has(m.user.id));
-  const unmatched  = enriched.filter(m => !m.user);
 
   return (
     <BottomSheet onClose={onClose}>
@@ -102,99 +92,23 @@ export default function ContactsSheet({ open, existingFriendIds, onClose, onAdd,
         </div>
       )}
 
-      {phase === "results" && (
-        <div style={{ padding: "0 20px 24px" }}>
-          {matches.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
-                On Prominence · {matches.length}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
-                {matches.map(m => {
-                  const arch = ARCHETYPES[m.user.archetype] || ARCHETYPES.balanced;
-                  const isAdded = added.has(m.phone);
-                  return (
-                    <div key={m.phone} style={{
-                      background: CARD, border: `1px solid ${isAdded ? alpha(ACCENT, "50") : BORDER}`,
-                      borderRadius: 12, padding: "10px 12px",
-                      display: "flex", alignItems: "center", gap: 10,
-                    }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                        background: `${arch.color}20`, border: `1px solid ${arch.color}50`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <span style={{ fontFamily: SERIF, fontSize: 14, color: arch.color }}>{m.user.initial}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: TEXT, fontWeight: 500 }}>{m.name}</div>
-                        <div style={{ fontSize: 10, color: TEXT_DIM }}>@{m.user.username} · {arch.label}</div>
-                      </div>
-                      <button onClick={() => handleAdd(m, m.user)} disabled={isAdded} style={{
-                        padding: "7px 14px", borderRadius: 99,
-                        background: isAdded ? alpha(ACCENT, "20") : ACCENT,
-                        color: isAdded ? ACCENT : BG, border: "none",
-                        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
-                        cursor: isAdded ? "default" : "pointer", flexShrink: 0,
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}>
-                        {isAdded ? <><Check size={11} strokeWidth={3} /> ADDED</> : <><Plus size={11} strokeWidth={2.5} /> ADD</>}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {unmatched.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
-                Not on Prominence yet · {unmatched.length}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {unmatched.map(m => {
-                  const isInvited = invited.has(m.phone);
-                  return (
-                    <div key={m.phone} style={{
-                      background: CARD, border: `1px solid ${BORDER}`,
-                      borderRadius: 12, padding: "10px 12px",
-                      display: "flex", alignItems: "center", gap: 10,
-                    }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                        background: CARD_ELEV, border: `1px solid ${BORDER_BR}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <span style={{ fontFamily: SERIF, fontSize: 14, color: TEXT_MID }}>{m.name[0]}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: TEXT, fontWeight: 500 }}>{m.name}</div>
-                        <div style={{ fontSize: 10, color: TEXT_DIM }}>{m.phone}</div>
-                      </div>
-                      <button onClick={() => handleInvite(m)} disabled={isInvited} style={{
-                        padding: "7px 14px", borderRadius: 99,
-                        background: isInvited ? alpha(ACCENT, "15") : "transparent",
-                        color: isInvited ? ACCENT : TEXT_MID,
-                        border: `1px solid ${isInvited ? ACCENT : BORDER_BR}`,
-                        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
-                        cursor: isInvited ? "default" : "pointer", flexShrink: 0,
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}>
-                        {isInvited ? <><Check size={11} strokeWidth={3} /> SENT</> : <><Send size={11} /> INVITE</>}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {matches.length === 0 && unmatched.length === 0 && (
-            <div style={{ padding: "20px", textAlign: "center", color: TEXT_MID, fontSize: 13 }}>
-              No contacts found to display.
-            </div>
-          )}
+      {phase === "done" && (
+        <div style={{ padding: "0 20px 28px", textAlign: "center" }}>
+          <div style={{ fontFamily: SERIF, fontSize: 20, marginBottom: 8 }}>None of your contacts are on Prominence yet.</div>
+          <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.55, marginBottom: 22 }}>
+            Invite them and they'll show up as friends when they sign up.
+          </div>
+          <button onClick={handleInvite} style={{
+            width: "100%", padding: "14px", borderRadius: 12,
+            background: invited.has("shared") ? alpha(ACCENT, "15") : ACCENT,
+            color: invited.has("shared") ? ACCENT : BG,
+            border: `1px solid ${invited.has("shared") ? alpha(ACCENT, "40") : "transparent"}`,
+            fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}>
+            <Send size={14} />
+            {invited.has("shared") ? "LINK COPIED" : "SHARE INVITE LINK"}
+          </button>
         </div>
       )}
     </BottomSheet>
