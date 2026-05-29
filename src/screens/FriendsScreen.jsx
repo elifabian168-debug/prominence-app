@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, Plus, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail, UserPlus, Check, X } from "lucide-react";
+import { Plus, Sparkles, Calendar, Crown, Medal, Award, Shield, Mail, UserPlus, Check, X } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { TYPE, SPACE, RADIUS, SHADOW, LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
+import PageHeader from "../components/ui/PageHeader";
 
 const WEEKLY_ACCENT = "#7CA9F2";
 const SILVER = "#C5C9D1";
@@ -57,6 +60,7 @@ const RANK_THEMES = {
 
 export default function FriendsScreen({ state, userXP, userName, onBack, onOpenFriend, onCheer, onOpenAdd, onOpenGroups, groupCount = 0, pendingInviteCount = 0, friendRequests = [], onAcceptRequest, onDeclineRequest }) {
   const [tab, setTab] = useState("activity");
+  const { isDesktop } = useViewport();
   const friends = state.friends || [];
   const cheersGiven = state.cheersGiven || {};
   const today = todayKey();
@@ -80,24 +84,21 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
         background: `radial-gradient(circle, ${alpha(ACCENT, "18")} 0%, transparent 70%)`,
       }} />
 
-      <button onClick={onBack} style={{ background: "transparent", border: "none", color: TEXT_MID, padding: "0 0 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-        <ChevronLeft size={16} /> Back
-      </button>
-
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, marginBottom: 20, position: "relative" }}>
-        <div>
-          <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.24em", textTransform: "uppercase", marginBottom: 6, fontWeight: 600 }}>Friends</div>
-          <div style={{ fontFamily: SERIF, fontSize: 34, letterSpacing: "-0.01em" }}>Your circle</div>
-        </div>
-        <button onClick={onOpenAdd} aria-label="Add friends" style={{
-          display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 99,
-          background: `linear-gradient(135deg, ${ACCENT}, ${alpha(ACCENT, "85")})`, color: BG, border: "none",
-          fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.1em", textTransform: "uppercase",
-          flexShrink: 0, boxShadow: `0 6px 18px ${alpha(ACCENT, "40")}`,
-        }}>
-          <Plus size={14} strokeWidth={2.8} /> Add
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Friends"
+        title="Your circle"
+        onBack={onBack}
+        action={
+          <button onClick={onOpenAdd} aria-label="Add friends" style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: RADIUS.pill,
+            background: `linear-gradient(135deg, ${ACCENT}, ${alpha(ACCENT, "85")})`, color: BG, border: "none",
+            fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.1em", textTransform: "uppercase",
+            flexShrink: 0, boxShadow: SHADOW.glow,
+          }}>
+            <Plus size={14} strokeWidth={2.8} /> Add
+          </button>
+        }
+      />
 
       {/* Circles entry */}
       {onOpenGroups && (
@@ -229,8 +230,8 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
         </div>
       )}
 
-      {/* Tab switcher */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, padding: 3, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10 }}>
+      {/* Tab switcher — desktop shows both panels side-by-side, so it's hidden there. */}
+      <div style={{ display: isDesktop ? "none" : "flex", gap: 6, marginBottom: 16, padding: 3, background: CARD, border: `1px solid ${BORDER}`, borderRadius: RADIUS.control }}>
         {[{ id: "activity", label: "Activity" }, { id: "leaderboard", label: "Leaderboard" }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex: 1, padding: "8px", borderRadius: 8,
@@ -244,8 +245,16 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
         ))}
       </div>
 
+      {/* On desktop both panels render side-by-side; on mobile the active tab. */}
+      <div style={{
+        display: isDesktop ? "grid" : "block",
+        gridTemplateColumns: isDesktop ? "1fr 1fr" : undefined,
+        gap: LAYOUT.gridGap, alignItems: "start",
+      }}>
       {/* Activity feed */}
-      {tab === "activity" && (
+      {(isDesktop || tab === "activity") && (
+        <div>
+          {isDesktop && <div style={{ ...TYPE.sectionLabel, marginBottom: SPACE.md }}>Activity</div>}
         <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {feed.length === 0 ? (
             <div style={{ background: CARD, border: `1px dashed ${BORDER_BR}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
@@ -314,11 +323,13 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
             );
           })}
         </div>
+        </div>
       )}
 
       {/* Leaderboard with podium */}
-      {tab === "leaderboard" && (
+      {(isDesktop || tab === "leaderboard") && (
         <div>
+          {isDesktop && <div style={{ ...TYPE.sectionLabel, marginBottom: SPACE.md }}>Leaderboard</div>}
           <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
             This week · Resets Monday
           </div>
@@ -424,6 +435,7 @@ export default function FriendsScreen({ state, userXP, userName, onBack, onOpenF
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

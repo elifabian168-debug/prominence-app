@@ -4,6 +4,8 @@ import { BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } f
 import { ARCHETYPES } from "../constants/categories";
 import { GROUP_THEMES } from "../constants/groupsData";
 import { todayKey } from "../utils/date";
+import { LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
 
 // Resolve the visual state of a Circle's streak:
 //   fresh   — qualified today (lastStreakDay === today)
@@ -42,6 +44,7 @@ export default function GroupDetailScreen({
   onAddFriend,
 }) {
   const [enter, setEnter] = useState(false);
+  const { isDesktop } = useViewport();
   useEffect(() => { const t = setTimeout(() => setEnter(true), 30); return () => clearTimeout(t); }, []);
 
   // Resolve members to a normalized shape. `isFriend` lets the row decide
@@ -80,7 +83,11 @@ export default function GroupDetailScreen({
         background: `radial-gradient(70% 50% at 50% -10%, ${alpha(theme.color, "20")}, transparent 70%)`,
       }} />
 
-      <div style={{ position: "relative", zIndex: 1, padding: "0 20px" }}>
+      <div style={{
+        position: "relative", zIndex: 1, padding: "0 20px",
+        maxWidth: isDesktop ? LAYOUT.reading : undefined,
+        margin: isDesktop ? "0 auto" : undefined,
+      }}>
         {/* Top bar */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",

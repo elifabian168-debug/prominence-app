@@ -4,6 +4,8 @@ import { ACCENT, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha
 import { CATEGORIES, ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP, formatXP } from "../utils/xp";
 import { todayKey, formatRelativeTime } from "../utils/date";
+import { LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
 
 const WEEKLY_ACCENT = "#7CA9F2";
 
@@ -734,13 +736,18 @@ export default function FriendDetailScreen({ friend, state, onBack, onCheer, onR
   const xpDisplay = friend.totalXP >= 1000
     ? `${(friend.totalXP / 1000).toFixed(1)}k`
     : friend.totalXP.toString();
+  const { isDesktop } = useViewport();
 
   if (showLifestats) {
     return <FriendLifeStatsView friend={friend} arch={arch} myStatXP={state.statXP} myCompletedTasks={state.completedTasks} onBack={() => setShowLifestats(false)} />;
   }
 
   return (
-    <div style={{ animation: "screenIn 0.3s ease" }}>
+    <div style={{
+      animation: "screenIn 0.3s ease",
+      maxWidth: isDesktop ? LAYOUT.reading : undefined,
+      margin: isDesktop ? "0 auto" : undefined,
+    }}>
 
       {/* ── HERO ZONE ──────────────────────────────────────────────────────── */}
       <div style={{

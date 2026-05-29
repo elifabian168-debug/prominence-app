@@ -1,9 +1,9 @@
-import { TEXT_DIM } from "../../constants/theme";
+import { TYPE, SPACE } from "../../constants/tokens";
 
 export default function Section({ label, children }) {
   return (
-    <div style={{ padding: "0 20px 18px" }}>
-      <div style={{ fontSize: 11, color: TEXT_DIM, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>
+    <div style={{ padding: `0 ${SPACE.xl}px ${SPACE.lg}px` }}>
+      <div style={{ ...TYPE.sectionLabel, marginBottom: SPACE.md }}>
         {label}
       </div>
       {children}

@@ -3,6 +3,7 @@ import { ChevronLeft, Plus } from "lucide-react";
 import { ACCENT, BG, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { GROUP_THEMES } from "../constants/groupsData";
 import { useViewport } from "../hooks/useViewport";
+import { LAYOUT } from "../constants/tokens";
 
 const formatRelativeShort = (ts) => {
   if (!ts) return "";
@@ -98,8 +99,8 @@ export default function GroupsScreen({
             Your people
           </div>
           <div style={{
-            fontFamily: SERIF, fontSize: 44, fontWeight: 500,
-            color: TEXT, letterSpacing: "0.02em", lineHeight: 1,
+            fontFamily: SERIF, fontSize: 30, fontWeight: 500,
+            color: TEXT, letterSpacing: "-0.01em", lineHeight: 1.1,
             marginBottom: 6,
           }}>
             Circles
@@ -181,7 +182,7 @@ export default function GroupsScreen({
             </div>
           ) : (
             <div style={isDesktop ? {
-              display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12,
+              display: "grid", gridTemplateColumns: "1fr 1fr", gap: LAYOUT.gridGap,
             } : { display: "flex", flexDirection: "column", gap: 12 }}>
               {groups.map((g, i) => {
                 const theme = GROUP_THEMES[g.themeColor] || GROUP_THEMES.solar;

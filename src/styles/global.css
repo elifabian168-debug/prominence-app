@@ -76,6 +76,10 @@ button { font-family: inherit; }
   mix-blend-mode: var(--grain-mix);
   pointer-events: none;
   z-index: 0;
+  /* Promote to its own compositor layer so it never re-rasterizes (and
+     never shimmers) as content scrolls above it. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .app-atmos::after {
   content: "";
@@ -85,6 +89,8 @@ button { font-family: inherit; }
     radial-gradient(80% 50% at 50% 105%, color-mix(in srgb, var(--accent-deep, var(--accent)) 6%, transparent), transparent 70%);
   pointer-events: none;
   z-index: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* ── Desktop frame ──

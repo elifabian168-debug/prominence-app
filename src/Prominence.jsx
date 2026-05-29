@@ -51,6 +51,11 @@ import NotificationCenterSheet from "./sheets/NotificationCenterSheet";
 
 const FAIL_COLOR = "#F87171";
 
+// Dev-only: set VITE_SKIP_AUTH=1 to bypass the login/onboarding gate and drop
+// straight into the app with a throwaway demo account, for local UI browsing.
+const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === "1";
+const DEMO_USER = { name: "Demo", username: "demo", uid: "demo-uid", email: "demo@local", createdAt: Date.now() };
+
 export default function Prominence() {
   // ── Hooks ────────────────────────────────────────────────────────────────
   const { toast, showToast } = useToast();
@@ -133,6 +138,12 @@ export default function Prominence() {
   const [authScreen, setAuthScreen] = useState(null);
 
   useEffect(() => {
+    if (SKIP_AUTH) {
+      setUser(prev => prev || DEMO_USER);
+      setAuthLoading(false);
+      setAuthScreen(null);
+      return;
+    }
     return onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (!fbUser) {
@@ -602,9 +613,16 @@ export default function Prominence() {
       paddingBottom: isDesktop ? 0 : 90,
     }}>
       {isDesktop ? (
+        // App shell: the grid is locked to the viewport (height 100vh +
+        // overflow hidden) and only <main> scrolls. This keeps the fixed
+        // grain/bloom layers perfectly still during scroll — they never
+        // recomposite against moving content — so the page reads as solid
+        // instead of shimmering. scrollbarGutter keeps the centered column
+        // from shifting horizontally when content height changes.
         <div style={{
           display: "grid", gridTemplateColumns: "240px 1fr",
-          minHeight: "100vh", position: "relative", zIndex: 1,
+          height: "100vh", overflow: "hidden",
+          position: "relative", zIndex: 1,
         }}>
           <Sidebar
             activeTab={activeTab}
@@ -613,8 +631,12 @@ export default function Prominence() {
             streak={state.streak}
             onAdd={() => openCreateModal("normal")}
           />
-          <main style={{ minHeight: "100vh", position: "relative" }}>
+          <main style={{
+            height: "100vh", overflowY: "auto", overflowX: "hidden",
+            scrollbarGutter: "stable", position: "relative",
+          }}>
             <DesktopTopBar
+              userName={user.name}
               unreadNotifs={unreadNotifs}
               onOpenNotifs={() => setNotifCenterOpen(true)}
               onOpenFriends={() => setShowFriends(true)}

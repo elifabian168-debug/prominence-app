@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ArrowRight } from "lucide-react";
 import { ACCENT, BG, BORDER, BORDER_BR, TEXT, TEXT_DIM, SERIF, alpha } from "../constants/theme";
+import { RADIUS, LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
 import { GROUP_THEMES, GROUP_THEME_KEYS } from "../constants/groupsData";
 import GroupCrest from "../components/groups/GroupCrest";
 
@@ -19,6 +21,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
   const previewSeed = `${name.trim().toLowerCase().replace(/\s+/g, "-") || "preview"}-seed`;
 
   const canSubmit = name.trim().length >= 3;
+  const { isDesktop } = useViewport();
 
   return (
     <div style={{ minHeight: "100vh", background: BG, color: TEXT, paddingBottom: 40 }}>
@@ -29,7 +32,11 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
         transition: "background 0.5s ease",
       }} />
 
-      <div style={{ position: "relative", zIndex: 1, padding: "0 20px" }}>
+      <div style={{
+        position: "relative", zIndex: 1, padding: "0 20px",
+        maxWidth: isDesktop ? LAYOUT.reading : undefined,
+        margin: isDesktop ? "0 auto" : undefined,
+      }}>
         {/* Top bar */}
         <div style={{ paddingTop: 24, paddingBottom: 12 }}>
           <button onClick={onBack} style={{
@@ -125,7 +132,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
                     flex: 1, padding: "10px 12px",
                     background: active ? alpha(theme.color, "16") : "transparent",
                     border: `1px solid ${active ? theme.color : BORDER}`,
-                    borderRadius: 10,
+                    borderRadius: RADIUS.control,
                     cursor: "pointer", textAlign: "left",
                     transition: "all 0.2s ease",
                   }}
@@ -178,7 +185,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
                     flex: 1, padding: "10px 12px",
                     background: active ? alpha(theme.color, "16") : "transparent",
                     border: `1px solid ${active ? theme.color : BORDER}`,
-                    borderRadius: 10,
+                    borderRadius: RADIUS.control,
                     cursor: "pointer", textAlign: "left",
                     transition: "all 0.2s ease",
                   }}
@@ -228,7 +235,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
                     flex: 1, padding: "10px 4px",
                     background: active ? alpha(t.color, "20") : "transparent",
                     border: `1px solid ${active ? t.color : BORDER}`,
-                    borderRadius: 10,
+                    borderRadius: RADIUS.control,
                     cursor: "pointer",
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
                     transition: "all 0.2s ease",
@@ -262,7 +269,7 @@ export default function CreateGroupScreen({ onBack, onConfirm, userArchetype = "
             background: canSubmit ? theme.color : "transparent",
             color: canSubmit ? BG : TEXT_DIM,
             border: `1px solid ${canSubmit ? theme.color : BORDER}`,
-            borderRadius: 12,
+            borderRadius: RADIUS.control,
             fontFamily: "'Outfit', sans-serif",
             fontSize: 12, fontWeight: 700,
             letterSpacing: "0.22em", textTransform: "uppercase",

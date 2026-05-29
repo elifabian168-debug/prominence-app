@@ -3,6 +3,7 @@ import { Bell, UserPlus, Sparkles, MessageCircle, Send, Trash2 } from "lucide-re
 import { ACCENT, BG, CARD, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
 import { ARCHETYPES, CATEGORIES } from "../constants/categories";
 import { useViewport } from "../hooks/useViewport";
+import { LAYOUT } from "../constants/tokens";
 
 const formatRelative = (ts) => {
   const mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
@@ -144,6 +145,11 @@ export default function FeedScreen({
       </div>
       )}
 
+      {/* Reading column — comfortable centered width on desktop. */}
+      <div style={{
+        maxWidth: isDesktop ? LAYOUT.reading : undefined,
+        margin: isDesktop ? "0 auto" : undefined,
+      }}>
       {/* Filter chips */}
       {chips.length > 1 && (
         <div style={{
@@ -177,10 +183,10 @@ export default function FeedScreen({
       )}
 
       {/* Posts */}
-      <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 10 }}>
         {filtered.length === 0 ? (
           <div style={{
-            margin: "24px 4px",
+            margin: "24px 0",
             padding: "48px 24px",
             textAlign: "center",
             border: `1px dashed ${BORDER}`,
@@ -257,6 +263,7 @@ export default function FeedScreen({
             ))}
           </>
         )}
+      </div>
       </div>
     </div>
   );

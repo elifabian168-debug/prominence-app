@@ -4,6 +4,8 @@ import { ACCENT, CARD, BORDER, TEXT, TEXT_DIM, TEXT_MID, SERIF } from "../consta
 import { CATEGORIES, ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP } from "../utils/xp";
 import { getArchetype } from "../utils/archetype";
+import { TYPE, SPACE, RADIUS, LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
 import BackButton from "../components/ui/BackButton";
 
 const STAT_LABELS  = ["Strength", "Intellect", "Discipline", "Vitality", "Craft"];
@@ -25,6 +27,7 @@ export default function LifeStatsScreen({ state, name, onBack }) {
   const { level } = getLevelFromXP(state.totalXP);
   const [phase, setPhase]       = useState("intro");
   const [selected, setSelected] = useState(null);
+  const { isDesktop } = useViewport();
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("grid"),     200);
@@ -52,14 +55,21 @@ export default function LifeStatsScreen({ state, name, onBack }) {
       <BackButton onBack={onBack} />
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: TEXT_DIM, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 6 }}>Character</div>
-        <div style={{ fontFamily: SERIF, fontSize: 44, lineHeight: 1, marginBottom: 6 }}>{name}</div>
+        <div style={{ ...TYPE.sectionLabel, marginBottom: SPACE.sm }}>Character</div>
+        <div style={{ ...TYPE.pageTitle, color: TEXT, marginBottom: 6 }}>{name}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: archetype.color, fontSize: 12 }}>
           <ArchIcon size={14} />
           <span style={{ letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500 }}>{archetype.label}</span>
           <span style={{ color: TEXT_DIM, marginLeft: 4 }}>· Level {level}</span>
         </div>
       </div>
+
+      {/* On desktop: radar (left) · detail + stat bars (right). */}
+      <div style={{
+        display: isDesktop ? "grid" : "block",
+        gridTemplateColumns: isDesktop ? "1fr 1fr" : undefined,
+        gap: LAYOUT.gridGap, alignItems: "start",
+      }}>
 
       {/* Radar */}
       <div style={{ display: "flex", justifyContent: "center", position: "relative", marginBottom: 16 }}>
@@ -141,12 +151,14 @@ export default function LifeStatsScreen({ state, name, onBack }) {
         </svg>
       </div>
 
+      {/* Right column (desktop): detail panel + bars */}
+      <div>
       {/* Stat detail panel */}
       {selected !== null && (
         <div key={selected} style={{
           background: `linear-gradient(135deg, ${STAT_COLORS[selected]}15, ${CARD})`,
           border: `1px solid ${STAT_COLORS[selected]}50`,
-          borderRadius: 16, padding: "18px 20px", marginBottom: 20,
+          borderRadius: RADIUS.card, padding: "18px 20px", marginBottom: 20,
           animation: "fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -239,7 +251,7 @@ export default function LifeStatsScreen({ state, name, onBack }) {
             <div key={k} onClick={() => setSelected(selected === i ? null : i)} style={{
               background: isSelected ? `linear-gradient(90deg, ${STAT_COLORS[i]}10, ${CARD})` : CARD,
               border: `1px solid ${isSelected ? STAT_COLORS[i] + "60" : BORDER}`,
-              borderRadius: 12, padding: "12px 14px", cursor: "pointer", transition: "all 0.2s",
+              borderRadius: RADIUS.control, padding: "12px 14px", cursor: "pointer", transition: "all 0.2s",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: STAT_COLORS[i], boxShadow: isSelected ? `0 0 8px ${STAT_COLORS[i]}` : "none" }} />
@@ -255,6 +267,8 @@ export default function LifeStatsScreen({ state, name, onBack }) {
           );
         })}
       </div>
+      </div>{/* end right column */}
+      </div>{/* end desktop grid */}
     </div>
   );
 }

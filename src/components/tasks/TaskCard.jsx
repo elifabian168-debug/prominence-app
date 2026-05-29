@@ -84,7 +84,7 @@ export default function TaskCard({ task, isMain, onComplete, onActions }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-        <span style={{ fontFamily: SERIF, fontSize: 16, color: ACCENT, fontWeight: 500, lineHeight: 1 }}>+{task.xp}</span>
+        <span style={{ fontFamily: SERIF, fontSize: 16, color: ACCENT, fontWeight: 600, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>+{task.xp}</span>
         <button onClick={e => { e.stopPropagation(); onActions(); }}
           aria-label="Edit or delete quest"
           className="task-actions-btn"

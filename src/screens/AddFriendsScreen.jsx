@@ -1,6 +1,10 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { ChevronLeft, Users, X, Plus, Check, Search } from "lucide-react";
+import { Users, X, Plus, Check, Search } from "lucide-react";
 import { ACCENT, BG, CARD, CARD_ELEV, BORDER, BORDER_BR, TEXT, TEXT_DIM, TEXT_MID, SERIF, alpha } from "../constants/theme";
+import { TYPE, SPACE, RADIUS, LAYOUT } from "../constants/tokens";
+import { useViewport } from "../hooks/useViewport";
+import PageHeader from "../components/ui/PageHeader";
+import EmptyState from "../components/ui/EmptyState";
 import { ARCHETYPES } from "../constants/categories";
 import { getLevelFromXP } from "../utils/xp";
 import { searchUsers, auth } from "../utils/firebase";
@@ -76,27 +80,23 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
 
   const showEmpty   = query.trim().length >= 2 && !searching && results.length === 0;
   const showPrompt  = query.trim().length < 2;
+  const { isDesktop } = useViewport();
 
   return (
-    <div style={{ padding: "24px 20px 0" }}>
-      <button onClick={onBack} style={{
-        background: "transparent", border: "none", color: TEXT_MID,
-        padding: "0 0 16px", fontSize: 13,
-        display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
-      }}>
-        <ChevronLeft size={16} /> Back
-      </button>
-
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: TEXT_DIM, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 6 }}>Discover</div>
-        <div style={{ fontFamily: SERIF, fontSize: 32 }}>Add friends</div>
-        <div style={{ fontSize: 12, color: TEXT_MID, marginTop: 4 }}>Search by @username or name</div>
+    <div style={{
+      padding: "24px 20px 0",
+      maxWidth: isDesktop ? LAYOUT.reading : undefined,
+      margin: isDesktop ? "0 auto" : undefined,
+    }}>
+      <PageHeader eyebrow="Discover" title="Add friends" onBack={onBack} />
+      <div style={{ ...TYPE.meta, marginTop: -SPACE.md, marginBottom: SPACE.xl }}>
+        Search by @username or name
       </div>
 
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         <button onClick={() => setInviteOpen(true)} style={{
-          flex: 1, padding: "12px 14px", borderRadius: 12,
+          flex: 1, padding: "12px 14px", borderRadius: RADIUS.control,
           background: `linear-gradient(135deg, ${alpha(ACCENT, "12")}, ${CARD})`,
           border: `1px solid ${alpha(ACCENT, "40")}`,
           color: TEXT, fontSize: 12, fontWeight: 500, cursor: "pointer",
@@ -111,7 +111,7 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
           </div>
         </button>
         <button onClick={() => setContactsOpen(true)} style={{
-          flex: 1, padding: "12px 14px", borderRadius: 12,
+          flex: 1, padding: "12px 14px", borderRadius: RADIUS.control,
           background: CARD, border: `1px solid ${BORDER_BR}`,
           color: TEXT, fontSize: 12, fontWeight: 500, cursor: "pointer",
           display: "flex", alignItems: "center", gap: 8, textAlign: "left",
@@ -129,7 +129,7 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
       {/* Search input */}
       <div style={{
         background: CARD, border: `1px solid ${BORDER}`,
-        borderRadius: 12, padding: "10px 14px", marginBottom: 16,
+        borderRadius: RADIUS.control, padding: "10px 14px", marginBottom: 16,
         display: "flex", alignItems: "center", gap: 10,
       }}>
         {searching
@@ -154,33 +154,23 @@ export default function AddFriendsScreen({ state, userName, onBack, onSendReques
 
       {/* States */}
       {showPrompt && (
-        <div style={{
-          background: CARD, border: `1px dashed ${BORDER_BR}`,
-          borderRadius: 12, padding: 28, textAlign: "center",
-        }}>
-          <Users size={22} color={TEXT_DIM} style={{ marginBottom: 10 }} />
-          <div style={{ fontSize: 13, color: TEXT_MID, marginBottom: 4 }}>
-            Type at least 2 characters to search
-          </div>
-          <div style={{ fontSize: 11, color: TEXT_DIM }}>
-            Try a @username or first name
-          </div>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Search for friends"
+          body="Type at least 2 characters — try a @username or first name."
+        />
       )}
 
       {showEmpty && (
-        <div style={{
-          background: CARD, border: `1px dashed ${BORDER_BR}`,
-          borderRadius: 12, padding: 24, textAlign: "center",
-        }}>
-          <div style={{ fontSize: 13, color: TEXT_MID, marginBottom: 4 }}>No one found for "{query.replace(/^@/, "")}"</div>
-          <div style={{ fontSize: 11, color: TEXT_DIM }}>Try their exact @username, or invite them to join</div>
-        </div>
+        <EmptyState
+          title={`No one found for "${query.replace(/^@/, "")}"`}
+          body="Try their exact @username, or invite them to join."
+        />
       )}
 
       {results.length > 0 && (
         <>
-          <div style={{ fontSize: 10, color: TEXT_DIM, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
+          <div style={{ ...TYPE.sectionLabel, marginBottom: SPACE.md }}>
             {results.length} result{results.length !== 1 ? "s" : ""}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 24 }}>

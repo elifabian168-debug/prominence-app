@@ -604,7 +604,7 @@ function SettingsSheet({
             onClick={onClose}
             aria-label="Close"
             style={{
-              width: 30, height: 30, borderRadius: "50%",
+              width: 36, height: 36, borderRadius: "50%",
               background: CARD, border: `1px solid ${BORDER_BR}`,
               color: TEXT_MID,
               display: "flex", alignItems: "center", justifyContent: "center",
